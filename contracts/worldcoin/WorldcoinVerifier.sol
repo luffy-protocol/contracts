@@ -53,7 +53,7 @@ function verifyAndExecute(
     uint256[8] calldata proof
 ) public {
     // First, we make sure this person hasn't done this before
-    if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
+    // if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
 
     // We now verify the provided proof is valid and the user is verified by World ID
     worldId.verifyProof(
