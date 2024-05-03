@@ -45,33 +45,15 @@ module.exports = {
   etherscan: {
     apiKey: {
       sepolia: networks.ethereumSepolia.verifyApiKey,
-      baseSepolia: networks.baseSepolia.verifyApiKey,
-      arbitrumSepolia: networks.arbitrumSepolia.verifyApiKey,
-      chilizSpicy: networks.chilizSpicy.verifyApiKey,
+      scrollSepolia: networks.scrollSepolia.verifyApiKey,
     },
     customChains: [
       {
-        network: "arbitrumSepolia",
-        chainId: networks.arbitrumSepolia.chainId,
+        network: "scrollSepolia",
+        chainId: networks.scrollSepolia.chainId,
         urls: {
-          apiURL: "https://api-sepolia.arbiscan.io/api",
-          browserURL: "https://sepolia.arbiscan.io/",
-        },
-      },
-      {
-        network: "baseSepolia",
-        chainId: networks.baseSepolia.chainId,
-        urls: {
-          apiURL: "https://api-sepolia.basescan.org/api",
-          browserURL: "https://sepolia.basescan.org/",
-        },
-      },
-      {
-        network: "chilizSpicy",
-        chainId: networks.chilizSpicy.chainId,
-        urls: {
-          apiURL: `https://api.routescan.io/v2/network/testnet/evm/${networks.chilizSpicy.chainId}/etherscan`,
-          browserURL: "https://testnet.chiliscan.com/",
+          apiURL: `https://api-sepolia.scrollscan.com/api`,
+          browserURL: "https://sepolia.scrollscan.com/",
         },
       },
     ],

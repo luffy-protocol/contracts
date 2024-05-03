@@ -2,7 +2,7 @@
   "name": "contracts",
   "version": "1.0.0",
   "main": "index.js",
-  "repository": "https://github.com/gabrielantonyxaviour/london",
+  "repository": "https://github.com/luffyprotocol/contracts",
   "author": "gabrielantonyxaviour",
   "license": "MIT",
   "private": true,

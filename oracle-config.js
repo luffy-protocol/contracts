@@ -7,9 +7,12 @@ const {
 
 // Configure the request by setting the fields below
 const requestConfig = {
-  source: fs.readFileSync("./testing.js").toString(),
+  source: fs.readFileSync("./oracle-script.js").toString(),
   codeLocation: Location.Inline,
-  secrets: { apiKey: process.env.PINATA_API_KEY || "" },
+  secrets: {
+    pinataKey: process.env.PINATA_API_KEY || "",
+    cricBuzzKey: process.env.CRICKET_API_KEY || "",
+  },
   secretsLocation: Location.DONHosted,
   args: ["1"],
   // Code language (only JavaScript is currently supported)

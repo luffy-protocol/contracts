@@ -13,11 +13,7 @@ task("deploy-protocol", "Deploys the LuffyProtocol contract")
     console.log("\n__Compiling Contracts__");
     await run("compile");
 
-    const args = [
-      "0x234a5fb5Bd614a7AA2FfAB244D603abFA0Ac5C5C",
-      "0x9288277372982b74C174132B5f43B9b1900855Fd",
-      ["Sample Player 1 Data", "Sample Player 2 Data", "Sample Player 3 Data"],
-    ];
+    const args = ["91515", "0x3C5154a193D6e2955650f9305c8d80c18C814A68"];
 
     const protocolContractFactory = await ethers.getContractFactory(
       "LuffyProtocol"

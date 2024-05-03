@@ -1,6 +1,6 @@
 const { networks } = require("../../networks");
-
-task("deploy-world", "Deploys the WorldcoinVerifier contract")
+const fs = require("fs");
+task("deploy-oracle", "Deploys the ZkCricketOracle contract")
   .addOptionalParam(
     "verify",
     "Set to true to verify contract",
@@ -8,37 +8,41 @@ task("deploy-world", "Deploys the WorldcoinVerifier contract")
     types.boolean
   )
   .setAction(async (taskArgs) => {
-    console.log(`Deploying WorldcoinVerifier contract to ${network.name}`);
+    console.log(`Deploying ZkCricketOracle contract to ${network.name}`);
 
     console.log("\n__Compiling Contracts__");
     await run("compile");
 
     const args = [
-      "0x42FF98C4E85212a5D31358ACbFe76a621b50fC02",
-      "app_staging_869452b514c58770aaa9dcb5dacfafac",
-      "luffy",
+      "0xb83E47C2bC239B3bf370bc41e1459A34b41238D0",
+      "534351",
+      "0x" + "09f1af4e16728fcf340051055159f0f9d5e00b54".padStart(64, "0"),
+      "0xfFAEF09B3cd11D9b20d1a19bECca54EEC2884766",
+      fs.readFileSync("./oracle-script.js", "utf8"),
+      "2435",
+      "0x66756e2d657468657265756d2d7365706f6c69612d3100000000000000000000",
     ];
 
-    const worldContractFactory = await ethers.getContractFactory(
-      "WorldcoinVerifier"
+    const protocolContractFactory = await ethers.getContractFactory(
+      "ZkCricketOracle"
     );
-    const worldContract = await worldContractFactory.deploy(...args);
+    const protocolContract = await protocolContractFactory.deploy(...args);
 
     console.log(
       `\nWaiting ${
         networks[network.name].confirmations
       } blocks for transaction ${
-        worldContract.deployTransaction.hash
+        protocolContract.deployTransaction.hash
       } to be confirmed...`
     );
 
-    await worldContract.deployTransaction.wait(
+    await protocolContract.deployTransaction.wait(
       networks[network.name].confirmations
     );
 
     console.log(
-      "\nDeployed WorldcoinVerifier contract to:",
-      worldContract.address
+      "\nDeployed ZkCricketOracle contract to:",
+      protocolContract.address
     );
 
     if (network.name === "localFunctionsTestnet") {
@@ -55,7 +59,7 @@ task("deploy-world", "Deploys the WorldcoinVerifier contract")
       try {
         console.log("\nVerifying contract...");
         await run("verify:verify", {
-          address: worldContract.address,
+          address: protocolContract.address,
           constructorArguments: args,
         });
         console.log("Contract verified");
@@ -76,6 +80,6 @@ task("deploy-world", "Deploys the WorldcoinVerifier contract")
     }
 
     console.log(
-      `\n WorldcoinVerifier contract deployed to ${worldContract.address} on ${network.name}`
+      `\n ZkCricketOracle contract deployed to ${protocolContract.address} on ${network.name}`
     );
   });
