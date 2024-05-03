@@ -9,7 +9,7 @@ const {
   Location,
   CodeLanguage,
 } = require("@chainlink/functions-toolkit");
-const zkCricketAbi = require("../build/artifacts/contracts/LuffyProtocol.sol/LuffyProtocol.json");
+const LuffyAbi = require("../build/artifacts/contracts/LuffyProtocol.sol/LuffyProtocol.json");
 const ethers = require("ethers");
 const { networks } = require("../networks");
 require("@chainlink/env-enc").config();
@@ -105,7 +105,7 @@ task("update-request", "Updates the Oracle function in the contract").setAction(
 
     const automatedFunctionsConsumer = new ethers.Contract(
       luffyAddress,
-      zkCricketAbi.abi,
+      LuffyAbi.abi,
       signer
     );
 

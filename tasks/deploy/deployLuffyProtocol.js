@@ -1,6 +1,7 @@
 const { networks } = require("../../networks");
 const fs = require("fs");
-task("deploy-oracle", "Deploys the ZkCricketOracle contract")
+
+task("deploy-protocol", "Deploys the LuffyProtocol contract")
   .addOptionalParam(
     "verify",
     "Set to true to verify contract",
@@ -8,23 +9,21 @@ task("deploy-oracle", "Deploys the ZkCricketOracle contract")
     types.boolean
   )
   .setAction(async (taskArgs) => {
-    console.log(`Deploying ZkCricketOracle contract to ${network.name}`);
+    console.log(`Deploying LuffyProtocol contract to ${network.name}`);
 
     console.log("\n__Compiling Contracts__");
     await run("compile");
 
-    const args = [
-      "0xb83E47C2bC239B3bf370bc41e1459A34b41238D0",
-      "534351",
-      "0x" + "09f1af4e16728fcf340051055159f0f9d5e00b54".padStart(64, "0"),
-      "0xfFAEF09B3cd11D9b20d1a19bECca54EEC2884766",
-      fs.readFileSync("./oracle-script.js", "utf8"),
-      "2435",
-      "0x66756e2d657468657265756d2d7365706f6c69612d3100000000000000000000",
-    ];
+    const functionsRouter = "0x234a5fb5Bd614a7AA2FfAB244D603abFA0Ac5C5C"; // Chainlink Functions Router in Arbitrum Sepolia
+    const sourceCode = fs.readFileSync("./oracle-script.js", "utf8"); // Source code of the Chainlink Functions
+    const subcriptionId = "37"; // Chainlink Functions Subscription ID
+    const donId =
+      "0x66756e2d617262697472756d2d7365706f6c69612d3100000000000000000000"; // Chainlink Functions Don ID for Arbitrum Sepolia
+
+    const args = [functionsRouter, sourceCode, subcriptionId, donId];
 
     const protocolContractFactory = await ethers.getContractFactory(
-      "ZkCricketOracle"
+      "LuffyProtocol"
     );
     const protocolContract = await protocolContractFactory.deploy(...args);
 
@@ -41,7 +40,7 @@ task("deploy-oracle", "Deploys the ZkCricketOracle contract")
     );
 
     console.log(
-      "\nDeployed ZkCricketOracle contract to:",
+      "\nDeployed LuffyProtocol contract to:",
       protocolContract.address
     );
 
@@ -80,6 +79,6 @@ task("deploy-oracle", "Deploys the ZkCricketOracle contract")
     }
 
     console.log(
-      `\n ZkCricketOracle contract deployed to ${protocolContract.address} on ${network.name}`
+      `\n LuffyProtocol contract deployed to ${protocolContract.address} on ${network.name}`
     );
   });

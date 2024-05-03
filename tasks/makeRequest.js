@@ -12,7 +12,7 @@ const {
   ResponseListener,
   FulfillmentCode,
 } = require("@chainlink/functions-toolkit");
-const zkCricketOracleAbi = require("../build/artifacts/contracts/ZkCricketOracle.sol/ZkCricketOracle.json");
+const LuffyOracleAbi = require("../build/artifacts/contracts/LuffyOracle.sol/LuffyOracle.json");
 const ethers = require("ethers");
 const { networks } = require("../networks");
 require("@chainlink/env-enc").config();
@@ -122,14 +122,14 @@ task(
 
   const donHostedSecretsVersion = parseInt(uploadResult.version); // fetch the version of the encrypted secrets
 
-  const zkCricketOracle = new ethers.Contract(
+  const LuffyOracle = new ethers.Contract(
     luffyOracleAddress,
-    zkCricketOracleAbi.abi,
+    LuffyOracleAbi.abi,
     signer
   );
 
   // Actual transaction call
-  const transaction = await zkCricketOracle.triggerFetchGameResults(
+  const transaction = await LuffyOracle.triggerFetchGameResults(
     slotIdNumber,
     donHostedSecretsVersion
   );

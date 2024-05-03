@@ -15,18 +15,6 @@ if (SECOND_PRIVATE_KEY) {
 }
 
 const networks = {
-  scrollSepolia: {
-    url:
-      `https://rpc.ankr.com/scroll_sepolia_testnet/${process.env.ANKR_RPC_KEY}` ||
-      "UNSET",
-    gasPrice: undefined,
-    nonce: undefined,
-    accounts,
-    verifyApiKey: process.env.SCROLL_API_KEY,
-    chainId: 534351,
-    confirmations: DEFAULT_VERIFICATION_BLOCK_CONFIRMATIONS,
-    nativeCurrencySymbol: "ETH",
-  },
   ethereumSepolia: {
     url:
       "https://eth-sepolia.g.alchemy.com/v2/" +
@@ -37,6 +25,18 @@ const networks = {
     verifyApiKey: process.env.ETHERSCAN_API_KEY || "UNSET",
     chainId: 11155111,
     confirmations: 3,
+    nativeCurrencySymbol: "ETH",
+  },
+  arbitrumSepolia: {
+    url:
+      "https://arb-sepolia.g.alchemy.com/v2/" +
+      process.env.ALCHEMY_API_KEY_ARBITRUM,
+    gasPrice: undefined,
+    nonce: undefined,
+    accounts,
+    verifyApiKey: process.env.ARBISCAN_API_KEY || "UNSET",
+    chainId: 421614,
+    confirmations: DEFAULT_VERIFICATION_BLOCK_CONFIRMATIONS,
     nativeCurrencySymbol: "ETH",
   },
 };

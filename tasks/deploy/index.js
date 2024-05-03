@@ -1,2 +1,1 @@
-exports.deploy = require("./deployZkCricket.js");
-exports.deployOracle = require("./deployZkCricketOracle.js");
+exports.deploy = require("./deployLuffyProtocol.js");
