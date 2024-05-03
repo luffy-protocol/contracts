@@ -159,16 +159,14 @@ contract LuffyProtocol is FunctionsClient, ConfirmedOwner {
         sourceCode=_sourceCode;
     }
 
-    function setPointsMerkleRoot(uint256 _gameweek, bytes32 _pointsMerkleRoot) public onlyOwner {
-        pointsMerkleRoot[_gameweek] = _pointsMerkleRoot;
-    }
-
     function setZkVerificationEnabled(bool _isZkVerificationEnabled) public onlyOwner {
         isZkVerificationEnabled = _isZkVerificationEnabled;
     }
 
-    function setGameResults(uint256 _gameId, string memory _gameResults) public onlyOwner {
+    function setGameResults(uint256 _gameId, string memory _gameResults, bytes32 _pointsMerkleRoot) public onlyOwner {
         gameResults[_gameId] = _gameResults;
+        pointsMerkleRoot[_gameId] = _pointsMerkleRoot;
+        emit ResultsPublished(_gameId, _pointsMerkleRoot, _gameResults);
     }
     
 }
