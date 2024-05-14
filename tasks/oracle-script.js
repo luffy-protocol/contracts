@@ -77,10 +77,15 @@ const playerPerformanceRequest = Functions.makeHttpRequest({
     "X-RapidAPI-Host": "cricbuzz-cricket.p.rapidapi.com",
   },
 });
-
 const [playerPerformanceResponse, playerIdsRemmapingResponse] =
   await Promise.all([playerPerformanceRequest, playerIdsRemmapingRequest]);
 let points = new Array(64).fill(0);
+
+// console.log("REMAPPING");
+// console.log(playerIdsRemmapingResponse.data);
+
+// console.log("PLAYER PERFORMANCE");
+// console.log(playerPerformanceResponse.data);
 
 if (!playerPerformanceResponse.error) {
   console.log("Player performance API success");
@@ -135,6 +140,8 @@ const pinFileToPinataRequest = Functions.makeHttpRequest({
 const [pinFileToPinataResponse] = await Promise.all([pinFileToPinataRequest]);
 
 const merkleRoot = computeMerkleRoot(padArrayWithZeros(points));
+console.log("PINATA RESPONSE");
+console.log(pinFileToPinataResponse.data);
 
 console.log(merkleRoot);
 const returnDataHex = encodeAbiParameters(

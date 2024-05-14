@@ -46,6 +46,9 @@ module.exports = {
     apiKey: {
       sepolia: networks.ethereumSepolia.verifyApiKey,
       arbitrumSepolia: networks.arbitrumSepolia.verifyApiKey,
+      avalancheFujiTestnet: networks.avalancheFuji.verifyApiKey,
+      optimismSepolia: networks.optimismSepolia.verifyApiKey,
+      baseSepolia: networks.baseSepolia.verifyApiKey,
     },
     customChains: [
       {
@@ -54,6 +57,22 @@ module.exports = {
         urls: {
           apiURL: "https://api-sepolia.arbiscan.io/api",
           browserURL: "https://sepolia.arbiscan.io/",
+        },
+      },
+      {
+        network: "optimsimSepolia",
+        chainId: networks.optimismSepolia.chainId,
+        urls: {
+          apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
+          browserURL: "https://sepolia-optimism.etherscan.io/",
+        },
+      },
+      {
+        network: "baseSepolia",
+        chainId: networks.baseSepolia.chainId,
+        urls: {
+          apiURL: "https://api-sepolia.basescan.org/api",
+          browserURL: "https://sepolia.basescan.org/",
         },
       },
     ],

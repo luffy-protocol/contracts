@@ -16,8 +16,8 @@ task("simulate", "Simulates the Oracle function").setAction(
       .toString();
 
     const args = [
-      "91618",
-      "https://amethyst-impossible-ptarmigan-368.mypinata.cloud/ipfs/Qmb3A7SwAscKkXwJHsWgrLsKemcSCsNswN3aL8i5aVXEVT?pinataGatewayToken=CUMCxB7dqGB8wEEQqGSGd9u1edmJpWmR9b0Oiuewyt5gs633nKmTogRoKZMrG4Vk",
+      "91663",
+      "https://amethyst-impossible-ptarmigan-368.mypinata.cloud/ipfs/Qmerg3DS3zorcefweBawjRRN9yW7UQbBFTNaduyc9JM4Nb/cskvsrr.json?pinataGatewayToken=CUMCxB7dqGB8wEEQqGSGd9u1edmJpWmR9b0Oiuewyt5gs633nKmTogRoKZMrG4Vk",
     ];
     const secrets = {
       pinataKey: process.env.PINATA_API_KEY || "",
