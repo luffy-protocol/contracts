@@ -1,1 +1,1 @@
-exports.deploy = require("./deployLuffyProtocol.js");
+exports.deployLuffy = require("./deployLuffyProtocol.js");
