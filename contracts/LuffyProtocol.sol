@@ -3,21 +3,10 @@ pragma solidity ^0.8.10;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
-import "@openzeppelin/contracts/utils/Strings.sol";
-import {UltraVerifier} from "./zk/plonk_vk.sol";
+import "./abstract/PointsCompute.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-error NotOwner(address caller);
-error NotMailbox(address caller);
-error InvalidGameweek(uint256 gameId);
-error SelectSquadDisabled(uint256 gameId);
-error ZeroKnowledgeVerificationFailed();
-error NotAllowedCaller(address caller, address owner);
-error UnexpectedRequestID(bytes32 requestId);
-error ResultsNotPublished(uint256 gameId);
-error InvalidBetToken(address betToken);
-error InsufficientBetAmount(address owner, address token, uint256 betAmountInUSD, uint256 betAmountInWei);
-error InsufficientAllowance(address owner, uint8 tokenId, uint256 betAmountInWei);
+import "./utils/Errors.sol";
+import "./utils/Events.sol";
 
 // Chainlink Functions
 // Chainlink Data Feeds
@@ -45,10 +34,7 @@ error InsufficientAllowance(address owner, uint8 tokenId, uint256 betAmountInWei
 // 6. Users will call claim points by verifying the zero knowledge proof.
 // 7. They will wait for 48 hours and claim the rewards based on the position in the leaderboard.
 
-contract LuffyProtocol is FunctionsClient, ConfirmedOwner {
-    // Library Imports
-    using Strings for uint256;
-    using FunctionsRequest for FunctionsRequest.Request;  
+contract LuffyProtocol is PointsCompute, ZeroKnowledge{
 
     // LuffyProtocol Variables
     mapping(uint256=>mapping(address=>bytes32)) public gameToSquadHash;
@@ -60,55 +46,27 @@ contract LuffyProtocol is FunctionsClient, ConfirmedOwner {
     string[] public playersMetadata;
 
     // zk Variables
-    UltraVerifier public zkVerifier; 
-    bool public isZkVerificationEnabled;
+
 
     // Chainlink Variables
-    bytes32 public donId;
-    address public functionsRouter;
-    address public upkeepContract;
-    string public sourceCode;
-    bytes32 public s_lastRequestId;
-    bytes public s_lastResponse;
-    bytes public s_lastError;
-    uint32 public s_callbackGasLimit = 300000;
-    uint64 public s_subscriptionId;
+
     uint256 public betAmount = 5 * 10 ** 8;
     mapping(bytes32=>uint256) public requestToGameId;
     mapping(address=>bool) public whitelistedBetTokens;
     mapping(uint8=>AggregatorV3Interface) public priceFeedAddresses;
 
-    constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId) FunctionsClient(_functionsRouter) ConfirmedOwner(msg.sender) 
+    constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) ConfirmedOwner(msg.sender) 
     {
         // LuffyProtocol Initializations
         isZkVerificationEnabled = true;
-
-        // Chainlink Initializations
-        functionsRouter=_functionsRouter;
-        sourceCode=_sourceCode;
-        s_subscriptionId=_subscriptionId;
-        donId=_donId;
 
         priceFeedAddresses[0]=AggregatorV3Interface(0x5498BB86BC934c8D34FDA08E81D444153d0D06aD); // AVAX TO USD
         priceFeedAddresses[1]=AggregatorV3Interface(0x5498BB86BC934c8D34FDA08E81D444153d0D06aD); // LINK TO USD
         priceFeedAddresses[2]=AggregatorV3Interface(0x5498BB86BC934c8D34FDA08E81D444153d0D06aD); // USDT TO USD
 
         // zk Initializations
-        zkVerifier=new UltraVerifier();
 
     }
-
-    event GamePlayerIdRemappingSet(uint256 gameId, string remapping);
-    event PlayersMetadataUpdated(uint256 playersMetadataLength, string[] playersMetadata);
-    event SquadRegistered(uint256 gameId, bytes32 squadHash, address registrant);
-    event PointsClaimed(uint256 gameId, address claimer, uint256 totalPoints);
-    event ResultsFetchInitiated(uint256 gameId, bytes32 requestId);
-    event ResultsPublished(uint256 gameId, bytes32 pointsMerkleRoot, string gameResults);
-    event ResultsFetchFailed(uint256 gameId, bytes32 requestId, bytes error);
-    event ClaimPointsDisabled(uint256 gameId);
-    event NewTokensWhitelisted(address[] tokens);
-    event BetAmountSet(uint256 amount);
-    event BetPlaced(uint256 gameId, bytes32 squadHash, address player, address token);
 
     modifier isBetTokenWhitelisted(uint8 _token){
         address _betToken=address(priceFeedAddresses[_token]);
@@ -173,13 +131,7 @@ contract LuffyProtocol is FunctionsClient, ConfirmedOwner {
             _publicInputs[0]=pointsMerkleRoot[_gameId];
             _publicInputs[1]=gameToSquadHash[_gameId][msg.sender];
             _publicInputs[2]= bytes32(totalPoints);
-            try zkVerifier.verify(_proof, _publicInputs)
-            {
-               gamePoints[_gameId][msg.sender] = totalPoints;
-                emit PointsClaimed(_gameId, msg.sender, totalPoints);
-            }catch{
-                revert ZeroKnowledgeVerificationFailed();
-            }
+           
         } else{
             gamePoints[_gameId][msg.sender] = totalPoints;
             emit PointsClaimed(_gameId, msg.sender, totalPoints);
