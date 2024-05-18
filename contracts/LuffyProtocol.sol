@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {FunctionsClient} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
-import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
-import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
-
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -39,6 +35,16 @@ error InsufficientAllowance(address owner, uint8 tokenId, uint256 betAmountInWei
 // Step 5: Chainlink Price Feeds to convert bet amount
 // Chainlnk VRF to 
 
+
+// Things that happen in this contract
+// 1. Set player id remappings manually for each game along with their start times.
+// 2. Choose squad for a game and place bet. Handle Crosschain bets too.
+// 3. Once match gets ended, Chainlink Time based automation is triggers the Chainlink Functions.
+// 4. Chainlink Functions fetches the results and triggers a log
+// 5. Chainlink Log Trigger Automation executes the code logic to assign the squad points ipfs hash and merkle root.
+// 6. Users will call claim points by verifying the zero knowledge proof.
+// 7. They will wait for 48 hours and claim the rewards based on the position in the leaderboard.
+
 contract LuffyProtocol is FunctionsClient, ConfirmedOwner {
     // Library Imports
     using Strings for uint256;
@@ -65,9 +71,9 @@ contract LuffyProtocol is FunctionsClient, ConfirmedOwner {
     bytes32 public s_lastRequestId;
     bytes public s_lastResponse;
     bytes public s_lastError;
-    uint32 public s_callbackGasLimit=300000;
+    uint32 public s_callbackGasLimit = 300000;
     uint64 public s_subscriptionId;
-    uint256 public betAmount;
+    uint256 public betAmount = 5 * 10 ** 8;
     mapping(bytes32=>uint256) public requestToGameId;
     mapping(address=>bool) public whitelistedBetTokens;
     mapping(uint8=>AggregatorV3Interface) public priceFeedAddresses;
