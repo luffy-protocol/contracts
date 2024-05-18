@@ -58,7 +58,7 @@ const networks = {
     accounts,
     verifyApiKey: process.env.FUJI_SNOWTRACE_API_KEY || "UNSET",
     chainId: 43113,
-    confirmations: 3,
+    confirmations: DEFAULT_VERIFICATION_BLOCK_CONFIRMATIONS,
     nativeCurrencySymbol: "AVAX",
   },
   optimismSepolia: {
