@@ -7,14 +7,15 @@ import "./abstract/PointsCompute.sol";
 import "./abstract/Automation.sol";
 import "./utils/Events.sol";
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-
-// Chainlink Functions
-// Chainlink Data Feeds
-// Chainlink VRF
-// Chainlink CCIP
-// Chainlink Log Trigger Automation
-// Chainlink TIme Based Automation
+// Chailnink Integrations [6/6]
+// 1. Chainlink Functions - DONE
+// 2. Chainlink Data Feeds - DONE
+// 3. Chainlink VRF - PENDING
+// 4. Chainlink CCIP - DONE
+// 5. Chainlink Log Trigger Automation - DONE
+// 6. Chainlink TIme Based Automation - DONE
 
 // Step 1: Register Squad
 // Step 2: Receive cross chain transactions
@@ -31,6 +32,7 @@ import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/Confir
 // 1. Set player id remappings manually for each game along with their start times. DONE
 // 2. Choose squad for a game and place bet. DONE
 //  - Handle Crosschain bets too. PENDING
+//  - Chainlink VRF. PENDING
 // 3. Once match gets ended, Chainlink Time based automation is triggers the Chainlink Functions. DONE
 // 4. Chainlink Functions fetches the results and triggers a log DONE
 // 5. Chainlink Log Trigger Automation executes the code logic to assign the squad points ipfs hash and merkle root. DONE
@@ -42,20 +44,23 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
 
     error InvalidAutomationCaller(address caller);
     error ClaimWindowComplete(uint256 currentTimestamp, uint256 deadline);
+    error ClaimWindowInComplete(uint256 currentTimestamp, uint256 deadline);
+    error PanicClaimError();
 
-    address public sourceChainSelector;
+    event RewardsClaimed(address claimed, uint256 value);
 
-    constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, uint64 _sourceChainSelector, bytes32 _donId, address _automationRegistry, AggregatorV3Interface[3] memory _priceFeeds) Automation(_automationRegistry) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) Predictions(_priceFeeds) 
-    {
-        sourceChainSelector=_sourceChainSelector;
-    }
+    mapping(address=>uint256) public claimmables;
+
+    address public USDC_TOKEN=0x5425890298aed601595a70AB815c96711a31Bc65;
+
+    constructor(address _ccipRouter, address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId, address _automationRegistry, AggregatorV3Interface[3] memory _priceFeeds) Automation(_automationRegistry) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) Predictions(_ccipRouter, _priceFeeds) {}
 
     receive() external payable {
-        (bool,bytes )=owner().call{value: msg.value}("");
+        (bool success, )=owner().call{value: msg.value}("");
     }
 
     fallback() external payable {
-        (bool,bytes )=owner().call{value: msg.value}("");
+        (bool success, )=owner().call{value: msg.value}("");
     }
 
     modifier onlyOwnerOrAutomation(uint8 _automation){
@@ -84,12 +89,32 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
     }
 
-    function claimPoints(uint256 _gameId, uint256[11] memory playerIds, bytes memory proof) public {
+    function claimPoints(uint256 _gameId, uint256[11] memory playerIds, uint256 _totalPoints, bytes memory proof) public {
         if(block.timestamp > results[_gameId].publishedTimestamp + 2 days) revert ClaimWindowComplete(block.timestamp, results[_gameId].publishedTimestamp + 2 days);
 
         // TODO: Pass playerIds in.
+        // 0 -  
+        // 1 -
+        // 2 -
+        // 3 -
         bytes32[] memory _publicInputs=new bytes32[](2);
         
+    }
+
+    function claimRewards(uint256 _gameId) public{
+        if(block.timestamp < results[_gameId].publishedTimestamp + 2 days) revert ClaimWindowInComplete(block.timestamp, results[_gameId].publishedTimestamp + 2 days);
+        // Implement Logic that sets money to claimmables and position in leaderboard
+    }
+
+    function withdrawRewards() public{
+        if(claimmables[msg.sender]>0)
+        {
+            if(IERC20(USDC_TOKEN).balanceOf(address(this))<claimmables[msg.sender]) revert PanicClaimError();
+            uint256 value=claimmables[msg.sender];
+            claimmables[msg.sender]=0;
+            IERC20(USDC_TOKEN).transferFrom(address(this), msg.sender, value);
+            emit RewardsClaimed(msg.sender, value);
+        }
     }
 
     // Only Owner
@@ -103,5 +128,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         playerIdRemappings[_gameId] = _remapping;
         emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
     }
+
+
 
 }
