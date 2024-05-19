@@ -36,6 +36,7 @@ import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/Confir
 // 6. Users will call claim points by verifying the zero knowledge proof.
 // 7. They will wait for 48 hours and claim the rewards based on the position in the leaderboard.
 
+
 contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwner{
 
     // LuffyProtocol Variables
@@ -53,14 +54,10 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
     // Chainlink Variables
 
     uint256 public betAmount = 5 * 10 ** 8;
-    mapping(bytes32=>uint256) public requestToGameId;
     mapping(address=>bool) public whitelistedBetTokens;
-    mapping(uint8=>AggregatorV3Interface) public priceFeedAddresses;
 
     constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId, AggregatorV3Interface[3] memory _priceFeeds) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) PriceFeeds(_priceFeeds) ConfirmedOwner(msg.sender) 
-    {
-       
-    }
+    {}
 
     modifier isBetTokenWhitelisted(uint8 _token){
         address _betToken=address(priceFeedAddresses[_token]);

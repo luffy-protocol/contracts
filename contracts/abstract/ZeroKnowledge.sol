@@ -5,7 +5,7 @@ import {UltraVerifier} from "../zk/plonk_vk.sol";
 
 
 abstract contract ZeroKnowledge {
-    UltraVerifier public zkVerifier; 
+    UltraVerifier public zkVerifier;
 
     constructor() 
     {

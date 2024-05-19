@@ -19,6 +19,7 @@ abstract contract PointsCompute is FunctionsClient {
     bytes public latestError;
     uint32 public oracleCallbackGasLimit = 300000;
     uint64 public functionsSubscriptionId;
+    mapping(bytes32=>uint256) public requestToGameId;
 
 
     constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId) FunctionsClient(_functionsRouter)
