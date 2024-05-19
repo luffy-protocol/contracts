@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
-
+import "./abstract/PriceFeeds.sol";
+import "./abstract/ZeroKnowledge.sol";
 import "./abstract/PointsCompute.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./utils/Errors.sol";
 import "./utils/Events.sol";
+import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
+
 
 // Chainlink Functions
 // Chainlink Data Feeds
@@ -34,7 +36,7 @@ import "./utils/Events.sol";
 // 6. Users will call claim points by verifying the zero knowledge proof.
 // 7. They will wait for 48 hours and claim the rewards based on the position in the leaderboard.
 
-contract LuffyProtocol is PointsCompute, ZeroKnowledge{
+contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwner{
 
     // LuffyProtocol Variables
     mapping(uint256=>mapping(address=>bytes32)) public gameToSquadHash;
@@ -55,17 +57,9 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge{
     mapping(address=>bool) public whitelistedBetTokens;
     mapping(uint8=>AggregatorV3Interface) public priceFeedAddresses;
 
-    constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) ConfirmedOwner(msg.sender) 
+    constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId, AggregatorV3Interface[3] memory _priceFeeds) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) PriceFeeds(_priceFeeds) ConfirmedOwner(msg.sender) 
     {
-        // LuffyProtocol Initializations
-        isZkVerificationEnabled = true;
-
-        priceFeedAddresses[0]=AggregatorV3Interface(0x5498BB86BC934c8D34FDA08E81D444153d0D06aD); // AVAX TO USD
-        priceFeedAddresses[1]=AggregatorV3Interface(0x5498BB86BC934c8D34FDA08E81D444153d0D06aD); // LINK TO USD
-        priceFeedAddresses[2]=AggregatorV3Interface(0x5498BB86BC934c8D34FDA08E81D444153d0D06aD); // USDT TO USD
-
-        // zk Initializations
-
+       
     }
 
     modifier isBetTokenWhitelisted(uint8 _token){
@@ -80,18 +74,18 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge{
         for(uint256 i=0; i<_betTokens.length; i++){
             whitelistedBetTokens[_betTokens[i]] = true;
         }
-        emit NewTokensWhitelisted(_betTokens);
+        emit Events.NewTokensWhitelisted(_betTokens);
     }
 
     function setBetAmountInUSD(uint256 _amount) public onlyOwner {
         betAmount = _amount;
-        emit BetAmountSet(_amount);
+        emit Events.BetAmountSet(_amount);
     }
 
     function setPlayerIdRemmapings(uint256 _gameId, string memory _remapping) public onlyOwner {
         playerIdRemappings[_gameId] = _remapping;
         isSelectSquadEnabled[_gameId] = true;
-        emit GamePlayerIdRemappingSet(_gameId, _remapping);
+        emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
     }
 
 
@@ -118,58 +112,58 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge{
 
     function  _makeSquad(uint256 _gameId, bytes32 _squadHash, address token) internal {
         gameToSquadHash[_gameId][msg.sender] = _squadHash;
-        emit BetPlaced(_gameId, _squadHash, msg.sender, token);
+        emit Events.BetPlaced(_gameId, _squadHash, msg.sender, token);
     }
 
-    function claimPoints(uint256 _gameId, uint256 totalPoints, bytes calldata _proof) public {
-        // Enable in Production
-        // if(isSelectSquadEnabled[_gameId]) revert SelectSquadDisabled(_gameId);
-        if(pointsMerkleRoot[_gameId] == bytes32(0)) revert ResultsNotPublished(_gameId);
+    // function claimPoints(uint256 _gameId, uint256 totalPoints, bytes calldata _proof) public {
+    //     // Enable in Production
+    //     // if(isSelectSquadEnabled[_gameId]) revert SelectSquadDisabled(_gameId);
+    //     if(pointsMerkleRoot[_gameId] == bytes32(0)) revert ResultsNotPublished(_gameId);
 
-        if(isZkVerificationEnabled){
-            bytes32[] memory _publicInputs=new bytes32[](2);
-            _publicInputs[0]=pointsMerkleRoot[_gameId];
-            _publicInputs[1]=gameToSquadHash[_gameId][msg.sender];
-            _publicInputs[2]= bytes32(totalPoints);
+    //     if(isZkVerificationEnabled){
+    //         bytes32[] memory _publicInputs=new bytes32[](2);
+    //         _publicInputs[0]=pointsMerkleRoot[_gameId];
+    //         _publicInputs[1]=gameToSquadHash[_gameId][msg.sender];
+    //         _publicInputs[2]= bytes32(totalPoints);
            
-        } else{
-            gamePoints[_gameId][msg.sender] = totalPoints;
-            emit PointsClaimed(_gameId, msg.sender, totalPoints);
-        }
-    }
+    //     } else{
+    //         gamePoints[_gameId][msg.sender] = totalPoints;
+    //         emit Events.PointsClaimed(_gameId, msg.sender, totalPoints);
+    //     }
+    // }
 
     // Chainlink Functions
-    function triggerFetchGameResults(uint256 _gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwner{
-        FunctionsRequest.Request memory req;
-        req.initializeRequestForInlineJavaScript(sourceCode);
-        req.addDONHostedSecrets(
-            donHostedSecretsSlotID,
-            donHostedSecretsVersion
-        );
-        string[] memory args= new string[](2);
-        args[0]=Strings.toString(_gameId);
-        args[1]=playerIdRemappings[_gameId];
-        s_lastRequestId = _sendRequest(
-            req.encodeCBOR(),
-            s_subscriptionId,
-            s_callbackGasLimit,
-            donId
-        );
-        requestToGameId[s_lastRequestId] = _gameId;
-        emit ResultsFetchInitiated(_gameId, s_lastRequestId);
-    }
+    // function triggerFetchGameResults(uint256 _gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwner{
+    //     FunctionsRequest.Request memory req;
+    //     req.initializeRequestForInlineJavaScript(sourceCode);
+    //     req.addDONHostedSecrets(
+    //         donHostedSecretsSlotID,
+    //         donHostedSecretsVersion
+    //     );
+    //     string[] memory args= new string[](2);
+    //     args[0]=Strings.toString(_gameId);
+    //     args[1]=playerIdRemappings[_gameId];
+    //     latestRequestId = _sendRequest(
+    //         req.encodeCBOR(),
+    //         functionsSubscriptionId,
+    //         oracleCallbackGasLimit,
+    //         donId
+    //     );
+    //     requestToGameId[latestRequestId] = _gameId;
+    //     emit Events.ResultsFetchInitiated(_gameId, latestRequestId);
+    // }
 
     function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
-        s_lastResponse = response;
-        s_lastError = err;
-        if(s_lastResponse.length == 0) {
-            emit ResultsFetchFailed(requestToGameId[requestId], requestId, err);
+        latestResponse = response;
+        latestError = err;
+        if(response.length == 0) {
+            emit Events.ResultsFetchFailed(requestToGameId[requestId], requestId, err);
         }else{
             uint256 _gameId = requestToGameId[requestId];
-            (bytes32 _pointsMerkleRoot, string memory _gameResults) = abi.decode(s_lastResponse, (bytes32, string));
+            (bytes32 _pointsMerkleRoot, string memory _gameResults) = abi.decode(response, (bytes32, string));
             pointsMerkleRoot[_gameId] = _pointsMerkleRoot;
             gameResults[_gameId] = _gameResults;
-            emit ResultsPublished(_gameId, _pointsMerkleRoot, _gameResults);
+            emit Events.ResultsPublished(_gameId, _pointsMerkleRoot, _gameResults);
         }
     } 
 
@@ -193,14 +187,14 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge{
         sourceCode=_sourceCode;
     }
 
-    function setZkVerificationEnabled(bool _isZkVerificationEnabled) public onlyOwner {
-        isZkVerificationEnabled = _isZkVerificationEnabled;
-    }
+    // function setZkVerificationEnabled(bool _isZkVerificationEnabled) public onlyOwner {
+    //     isZkVerificationEnabled = _isZkVerificationEnabled;
+    // }
 
     function setGameResults(uint256 _gameId, string memory _gameResults, bytes32 _pointsMerkleRoot) public onlyOwner {
         gameResults[_gameId] = _gameResults;
         pointsMerkleRoot[_gameId] = _pointsMerkleRoot;
-        emit ResultsPublished(_gameId, _pointsMerkleRoot, _gameResults);
+        emit Events.ResultsPublished(_gameId, _pointsMerkleRoot, _gameResults);
     }
     
 }

@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
     
+
+library Events{
+
 event GamePlayerIdRemappingSet(uint256 gameId, string remapping);
 event PlayersMetadataUpdated(uint256 playersMetadataLength, string[] playersMetadata);
 event SquadRegistered(uint256 gameId, bytes32 squadHash, address registrant);
@@ -13,3 +16,5 @@ event ClaimPointsDisabled(uint256 gameId);
 event NewTokensWhitelisted(address[] tokens);
 event BetAmountSet(uint256 amount);
 event BetPlaced(uint256 gameId, bytes32 squadHash, address player, address token);
+
+}
