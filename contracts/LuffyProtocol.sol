@@ -5,7 +5,6 @@ import "./abstract/PriceFeeds.sol";
 import "./abstract/ZeroKnowledge.sol";
 import "./abstract/PointsCompute.sol";
 import "./abstract/Automation.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./utils/Errors.sol";
 import "./utils/Events.sol";
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
@@ -29,32 +28,23 @@ import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/Confir
 
 
 // Things that happen in this contract
-// Intial setup: Set Automation Forwarder Address.
-// 1. Set player id remappings manually for each game along with their start times.
-// 2. Choose squad for a game and place bet. Handle Crosschain bets too.
-// 3. Once match gets ended, Chainlink Time based automation is triggers the Chainlink Functions.
-// 4. Chainlink Functions fetches the results and triggers a log
-// 5. Chainlink Log Trigger Automation executes the code logic to assign the squad points ipfs hash and merkle root.
+// Intial setup: Set upkeep ids for both automation
+// 1. Set player id remappings manually for each game along with their start times. DONE
+// 2. Choose squad for a game and place bet. DONE
+//  - Handle Crosschain bets too. PENDING
+// 3. Once match gets ended, Chainlink Time based automation is triggers the Chainlink Functions. DONE
+// 4. Chainlink Functions fetches the results and triggers a log DONE
+// 5. Chainlink Log Trigger Automation executes the code logic to assign the squad points ipfs hash and merkle root. DONE
 // 6. Users will call claim points by verifying the zero knowledge proof.
 // 7. They will wait for 48 hours and claim the rewards based on the position in the leaderboard.
 
+
 contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwner, Automation{
 
-    uint256 public betAmount = 5 * 10 ** 8;
-    mapping(address=>bool) public whitelistedBetTokens;
-
-    mapping(uint256=>mapping(address=>bytes32)) public gameToSquadHash;
-    mapping(uint256=>string) public playerIdRemappings;
 
     constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId, address _automationRegistry, AggregatorV3Interface[3] memory _priceFeeds) Automation(_automationRegistry) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) PriceFeeds(_priceFeeds) ConfirmedOwner(msg.sender) 
     {}
 
-    modifier isBetTokenWhitelisted(uint8 _token){
-        address _betToken=address(priceFeeds[_token]);
-
-        if(!whitelistedBetTokens[_betToken]) revert InvalidBetToken(_betToken);
-        _;
-    }
 
     modifier onlyOwnerOrAutomation(uint8 _automation){
         address forwarderAddress=getForwarderAddress(_automation);
@@ -62,39 +52,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
         _;
     }
 
-    function whitelistBetTokens(address[] memory _betTokens) public onlyOwner {
-        for(uint256 i=0; i<_betTokens.length; i++){
-            whitelistedBetTokens[_betTokens[i]] = true;
-        }
-        emit Events.NewTokensWhitelisted(_betTokens);
-    }
 
-
-    function makeSquadAndPlaceBetETH(uint256 _gameId, bytes32 _squadHash) public payable{
-        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
-
-        uint256 betAmountInUSD=getValueInUSD(msg.value,0);
-        if(betAmountInUSD < betAmount) revert InsufficientBetAmount(msg.sender, address(0), betAmountInUSD, msg.value);
-        _makeSquad(_gameId, _squadHash, address(0));
-    }
-
-    function makeSquadAndPlaceBetToken(uint256 _gameId, bytes32 _squadHash, uint8 _token, uint256 betAmountInWei) isBetTokenWhitelisted(_token) public {
-        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
-
-        address betToken=address(priceFeeds[_token]);
-        if(IERC20(betToken).allowance(msg.sender, address(this)) < betAmountInWei) revert InsufficientAllowance(msg.sender, _token, betAmountInWei);
-
-        uint256 betAmountInUSD=getValueInUSD(betAmountInWei, _token);
-        if(betAmountInUSD < betAmount) revert InsufficientBetAmount(msg.sender, betToken, betAmountInUSD, betAmountInWei);
-
-        IERC20(betToken).transferFrom(msg.sender, address(this), betAmountInWei);
-        _makeSquad(_gameId, _squadHash, betToken);
-    }
-
-    function  _makeSquad(uint256 _gameId, bytes32 _squadHash, address token) internal {
-        gameToSquadHash[_gameId][msg.sender] = _squadHash;
-        emit Events.BetPlaced(_gameId, _squadHash, msg.sender, token);
-    }
 
     function triggerFetchResults(uint256 gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwnerOrAutomation(0) {
         _triggerCompute(gameId,playerIdRemappings[gameId], donHostedSecretsSlotID, donHostedSecretsVersion);
