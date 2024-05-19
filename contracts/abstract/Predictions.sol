@@ -10,12 +10,14 @@ error SelectSquadDisabled(uint256 gameId);
 error InsufficientBetAmount(address sender, address token, uint256 betInUSD, uint256 betInWei);
 error InsufficientAllowance(address sender, address token, uint256 amountInWei);
 
-abstract contract Predictions is ConfirmedOwner, PriceFeeds{
+abstract contract Predictions is PriceFeeds, ConfirmedOwner{
 
     uint256 public betAmount = 5 * 10 ** 8;
     mapping(uint256=>mapping(address=>bytes32)) public gameToSquadHash;
     mapping(uint256=>string) public playerIdRemappings;
     mapping(address=>bool) public whitelistedBetTokens;
+
+    constructor(AggregatorV3Interface[3] memory _priceFeeds) PriceFeeds(_priceFeeds) ConfirmedOwner(msg.sender){}
 
     modifier isBetTokenWhitelisted(uint8 _token){
         address _betToken=address(priceFeeds[_token]);
@@ -24,8 +26,9 @@ abstract contract Predictions is ConfirmedOwner, PriceFeeds{
     }
 
     event NewTokensWhitelisted(address[] betTokens);
-
-    function whitelistBetTokens(address[] memory _betTokens) public onlyOwner {
+    event BetPlaced(uint256 gameId, bytes32 squadHash, address caller, address token);
+    
+    function whitelistBetTokens(address[] memory _betTokens) public  onlyOwner{
         for(uint256 i=0; i<_betTokens.length; i++){
             whitelistedBetTokens[_betTokens[i]] = true;
         }
@@ -45,7 +48,7 @@ abstract contract Predictions is ConfirmedOwner, PriceFeeds{
         if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
 
         address betToken=address(priceFeeds[_token]);
-        if(IERC20(betToken).allowance(msg.sender, address(this)) < betAmountInWei) revert InsufficientAllowance(msg.sender, _token, betAmountInWei);
+        if(IERC20(betToken).allowance(msg.sender, address(this)) < betAmountInWei) revert InsufficientAllowance(msg.sender, betToken, betAmountInWei);
 
         uint256 betAmountInUSD=getValueInUSD(betAmountInWei, _token);
         if(betAmountInUSD < betAmount) revert InsufficientBetAmount(msg.sender, betToken, betAmountInUSD, betAmountInWei);
@@ -56,7 +59,6 @@ abstract contract Predictions is ConfirmedOwner, PriceFeeds{
 
     function  _makeSquad(uint256 _gameId, bytes32 _squadHash, address token) internal {
         gameToSquadHash[_gameId][msg.sender] = _squadHash;
-        emit Events.BetPlaced(_gameId, _squadHash, msg.sender, token);
+        emit BetPlaced(_gameId, _squadHash, msg.sender, token);
     }
-
 }

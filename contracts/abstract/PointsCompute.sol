@@ -11,6 +11,12 @@ abstract contract PointsCompute is FunctionsClient, ILogAutomation {
     using FunctionsRequest for FunctionsRequest.Request;  
     using Strings for uint256;
 
+    struct Results{
+        string ipfsHash;
+        bytes32 merkleRoot;
+        uint256 publishedTimestamp;
+    }
+
     
     bytes32 public donId;
     address public functionsRouter;
@@ -21,8 +27,7 @@ abstract contract PointsCompute is FunctionsClient, ILogAutomation {
     uint32 public oracleCallbackGasLimit = 300000;
     uint64 public functionsSubscriptionId;
     mapping(bytes32=>uint256) public requestToGameId;
-    mapping(uint256=>string) public pointsIpfsHash;
-    mapping(uint256=>bytes32) public pointsMerkleRoot;
+    mapping(uint256=>Results) public results;
 
     constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId) FunctionsClient(_functionsRouter)
     {
