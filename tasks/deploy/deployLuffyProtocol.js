@@ -14,13 +14,27 @@ task("deploy-protocol", "Deploys the LuffyProtocol contract")
     console.log("\n__Compiling Contracts__");
     await run("compile");
 
-    const functionsRouter = "0x234a5fb5Bd614a7AA2FfAB244D603abFA0Ac5C5C"; // Chainlink Functions Router in Arbitrum Sepolia
-    const sourceCode = fs.readFileSync("./oracle-script.js", "utf8"); // Source code of the Chainlink Functions
+    const ccipRouter = "0xF694E193200268f9a4868e4Aa017A0118C9a8177";
+    const functionsRouter = "0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0"; // Chainlink Functions Router in Avalanche Fuji
+    const sourceCode = fs.readFileSync("./mls-oracle-script.js", "utf8"); // Source code of the Chainlink Functions
     const subcriptionId = "37"; // Chainlink Functions Subscription ID
     const donId =
-      "0x66756e2d617262697472756d2d7365706f6c69612d3100000000000000000000"; // Chainlink Functions Don ID for Arbitrum Sepolia
-
-    const args = [functionsRouter, sourceCode, subcriptionId, donId];
+      "0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000"; // Chainlink Functions Don ID for Avalanche Fuji
+    const automationRegistry = "0x819B58A646CDd8289275A87653a2aA4902b14fe6";
+    const priceFeeds = [
+      "0x5498BB86BC934c8D34FDA08E81D444153d0D06aD",
+      "0x7898AcCC83587C3C55116c5230C17a6Cd9C71bad",
+      "0x34C4c526902d88a3Aa98DB8a9b802603EB1E3470",
+    ];
+    const args = [
+      ccipRouter,
+      functionsRouter,
+      sourceCode,
+      subcriptionId,
+      donId,
+      automationRegistry,
+      priceFeeds,
+    ];
 
     const protocolContractFactory = await ethers.getContractFactory(
       "LuffyProtocol"

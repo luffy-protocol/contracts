@@ -47,13 +47,18 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     error ClaimWindowInComplete(uint256 currentTimestamp, uint256 deadline);
     error PanicClaimError();
 
-    event RewardsClaimed(address claimed, uint256 value);
 
     mapping(address=>uint256) public claimmables;
 
     address public USDC_TOKEN=0x5425890298aed601595a70AB815c96711a31Bc65;
 
     constructor(address _ccipRouter, address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId, address _automationRegistry, AggregatorV3Interface[3] memory _priceFeeds) Automation(_automationRegistry) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) Predictions(_ccipRouter, _priceFeeds) {}
+
+    modifier onlyOwnerOrAutomation(uint8 _automation){
+        address forwarderAddress=getForwarderAddress(_automation);
+        if(msg.sender!=owner()&&msg.sender!=forwarderAddress) revert InvalidAutomationCaller(msg.sender);
+        _;
+    }
 
     receive() external payable {
         (bool success, )=owner().call{value: msg.value}("");
@@ -62,11 +67,19 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     fallback() external payable {
         (bool success, )=owner().call{value: msg.value}("");
     }
+    
+    event PointsClaimed(uint256 gameid, address claimer, uint256 totalPoints);
+    event RewardsClaimed(uint256 gameId, address claimer, uint256 value);
+    event RewardsWithdrawn(address claimer, uint256 value);
 
-    modifier onlyOwnerOrAutomation(uint8 _automation){
-        address forwarderAddress=getForwarderAddress(_automation);
-        if(msg.sender!=owner()&&msg.sender!=forwarderAddress) revert InvalidAutomationCaller(msg.sender);
-        _;
+    function setBetAmountInUSDC(uint256 _amount) public onlyOwner {
+        betAmount = _amount;
+        emit Events.BetAmountSet(_amount);
+    }
+
+    function setPlayerIdRemmapings(uint256 _gameId, string memory _remapping) public onlyOwner {
+        playerIdRemappings[_gameId] = _remapping;
+        emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
     }
 
     function triggerFetchResults(uint256 gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwnerOrAutomation(0) {
@@ -98,7 +111,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         // 2 -
         // 3 -
         bytes32[] memory _publicInputs=new bytes32[](2);
-        
+
     }
 
     function claimRewards(uint256 _gameId) public{
@@ -113,20 +126,37 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
             uint256 value=claimmables[msg.sender];
             claimmables[msg.sender]=0;
             IERC20(USDC_TOKEN).transferFrom(address(this), msg.sender, value);
-            emit RewardsClaimed(msg.sender, value);
+            emit RewardsWithdrawn(msg.sender, value);
         }
     }
 
-    // Only Owner
+    // Testing Helpers for subgraph
 
-    function setBetAmountInUSD(uint256 _amount) public onlyOwner {
-        betAmount = _amount;
-        emit Events.BetAmountSet(_amount);
+    // 1. Set playerId remappings
+    // 2. Make predictions and place bets
+    // 3. Match results posted on chain
+    // 4. Claim points on chain
+    // 5. Claim rewards on chain
+    // 6. Withdraw rewards on chain
+
+    function zmakeSquadTest(uint256 _gameId, bytes32 _squadHash, address _player, uint256 _amount) public {
+        emit BetPlaced(_gameId, _squadHash, _player, _amount);
     }
 
-    function setPlayerIdRemmapings(uint256 _gameId, string memory _remapping) public onlyOwner {
-        playerIdRemappings[_gameId] = _remapping;
-        emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
+    function zpostResultsTest(bytes32 _requestId, uint256 _gameId, bytes32 _merkleRoot, string memory _pointsIpfsHash) public{
+        emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
+    }
+
+    function zclaimPointsTest(uint256 _gameId, address _claimer, uint256 _totalPoints) public{
+        emit PointsClaimed(_gameId, _claimer, _totalPoints);
+    }
+
+    function zclaimRewardsTest(uint256 _gameId, address _claimer, uint256 _amount) public{
+        emit RewardsClaimed(_gameId, _claimer, _amount);
+    }
+
+    function zwithdrawRewardsTest(address _claimer, uint256 _amount) public{
+        emit RewardsWithdrawn(_claimer, _amount);
     }
 
 

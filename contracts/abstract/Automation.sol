@@ -20,7 +20,6 @@ abstract contract Automation is ILogAutomation, ConfirmedOwner{
     }
 
     function getForwarderAddress(uint8 _automation) public view returns(address){
-
         return automationRegistry.getForwarder(upKeepIds[_automation]);
     }   
               
