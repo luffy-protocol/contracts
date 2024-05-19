@@ -129,7 +129,7 @@ task(
   );
 
   // Actual transaction call
-  const transaction = await LuffyOracle.triggerFetchGameResults(
+  const transaction = await LuffyOracle.triggerFetchpointsIpfsHash(
     slotIdNumber,
     donHostedSecretsVersion
   );

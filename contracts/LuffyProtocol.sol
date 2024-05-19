@@ -39,28 +39,19 @@ import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/Confir
 
 contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwner{
 
-    // LuffyProtocol Variables
-    mapping(uint256=>mapping(address=>bytes32)) public gameToSquadHash;
-    mapping(uint256=>mapping(address=>uint256)) public gamePoints;
-    mapping(uint256=>string) public gameResults;
-    mapping(uint256=>bytes32) public pointsMerkleRoot;
-    mapping(uint256=>string) public playerIdRemappings;
-    mapping(uint256=>bool) public isSelectSquadEnabled;
-    string[] public playersMetadata;
-
-    // zk Variables
-
-
-    // Chainlink Variables
-
     uint256 public betAmount = 5 * 10 ** 8;
     mapping(address=>bool) public whitelistedBetTokens;
+
+    mapping(uint256=>mapping(address=>bytes32)) public gameToSquadHash;
+    mapping(uint256=>mapping(address=>uint256)) public gamePoints;
+    mapping(uint256=>string) public playerIdRemappings;
+    string[] public playersMetadata;
 
     constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId, AggregatorV3Interface[3] memory _priceFeeds) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) PriceFeeds(_priceFeeds) ConfirmedOwner(msg.sender) 
     {}
 
     modifier isBetTokenWhitelisted(uint8 _token){
-        address _betToken=address(priceFeedAddresses[_token]);
+        address _betToken=address(priceFeeds[_token]);
 
         if(!whitelistedBetTokens[_betToken]) revert InvalidBetToken(_betToken);
         _;
@@ -74,37 +65,29 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
         emit Events.NewTokensWhitelisted(_betTokens);
     }
 
-    function setBetAmountInUSD(uint256 _amount) public onlyOwner {
-        betAmount = _amount;
-        emit Events.BetAmountSet(_amount);
-    }
 
-    function setPlayerIdRemmapings(uint256 _gameId, string memory _remapping) public onlyOwner {
-        playerIdRemappings[_gameId] = _remapping;
-        isSelectSquadEnabled[_gameId] = true;
-        emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
-    }
+
 
 
     function makeSquadAndPlaceBetETH(uint256 _gameId, bytes32 _squadHash) public payable{
-        if(!isSelectSquadEnabled[_gameId]) revert SelectSquadDisabled(_gameId);
+        if(playerIdRemappings[_gameId].length>0) revert SelectSquadDisabled(_gameId);
 
-        uint256 betAmountInUSD=(msg.value*getLatestPrice(0))/10**18;
+        uint256 betAmountInUSD=getValueInUSD(msg.value,0);
         if(betAmountInUSD < betAmount) revert InsufficientBetAmount(msg.sender, address(0), betAmountInUSD, msg.value);
         _makeSquad(_gameId, _squadHash, address(0));
     }
 
     function makeSquadAndPlaceBetToken(uint256 _gameId, bytes32 _squadHash, uint8 _token, uint256 betAmountInWei) isBetTokenWhitelisted(_token) public {
-        if(!isSelectSquadEnabled[_gameId]) revert SelectSquadDisabled(_gameId);
-        address betToken=address(priceFeedAddresses[_token]);
+        if(playerIdRemappings[_gameId].length>0) revert SelectSquadDisabled(_gameId);
+
+        address betToken=address(priceFeeds[_token]);
         if(IERC20(betToken).allowance(msg.sender, address(this)) < betAmountInWei) revert InsufficientAllowance(msg.sender, _token, betAmountInWei);
-   
-        uint256 betAmountInUSD=(betAmountInWei*getLatestPrice(_token))/10**18;     
+
+        uint256 betAmountInUSD=getValueInUSD(betAmountInWei, _token);
         if(betAmountInUSD < betAmount) revert InsufficientBetAmount(msg.sender, betToken, betAmountInUSD, betAmountInWei);
-        
+
         IERC20(betToken).transferFrom(msg.sender, address(this), betAmountInWei);
         _makeSquad(_gameId, _squadHash, betToken);
-        
     }
 
     function  _makeSquad(uint256 _gameId, bytes32 _squadHash, address token) internal {
@@ -130,7 +113,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
     // }
 
     // Chainlink Functions
-    // function triggerFetchGameResults(uint256 _gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwner{
+    // function triggerFetchpointsIpfsHash(uint256 _gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwner{
     //     FunctionsRequest.Request memory req;
     //     req.initializeRequestForInlineJavaScript(sourceCode);
     //     req.addDONHostedSecrets(
@@ -153,32 +136,44 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
     function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
         latestResponse = response;
         latestError = err;
-        if(response.length == 0) {
-            emit Events.ResultsFetchFailed(requestToGameId[requestId], requestId, err);
-        }else{
-            uint256 _gameId = requestToGameId[requestId];
-            (bytes32 _pointsMerkleRoot, string memory _gameResults) = abi.decode(response, (bytes32, string));
-            pointsMerkleRoot[_gameId] = _pointsMerkleRoot;
-            gameResults[_gameId] = _gameResults;
-            emit Events.ResultsPublished(_gameId, _pointsMerkleRoot, _gameResults);
-        }
+        if(response.length==0) emit OracleResponseFailed(requestId, err);
+        else emit OracleResponseSuccess(requestId, response);
     } 
 
-
-    // Chainlink Price Feeds
-    function getLatestPrice(uint8 _priceFeedId) public view returns (uint256) {
-        (, int price, , ,) = priceFeedAddresses[_priceFeedId].latestRoundData();
-        return uint256(price);
+          
+    function checkLog(
+        Log calldata log,
+        bytes memory
+    ) external pure returns (bool upkeepNeeded, bytes memory performData) {
+        upkeepNeeded = true;
+        performData = log.data;
     }
 
-    function getBetInUSD(uint256 _betAmountInWei, uint8 _priceFeedId) public view returns (uint256) {
-        return (_betAmountInWei*getLatestPrice(_priceFeedId))/10**18;
+    function performUpkeep(bytes calldata performData) external override {
+        (bytes32 _requestId, bytes memory response) = abi.decode(performData, (bytes32, bytes));
+        (bytes32 _merkleRoot, string memory _pointsIpfsHash)=abi.decode(response, (bytes32, string));
+
+        uint256 _gameId=requestToGameId[_requestId];
+        pointsIpfsHash[_gameId]=_pointsIpfsHash;
+        pointsMerkleRoot[_gameId]=_merkleRoot;
+        emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
     }
+
+
+    // Only Owner
+
+    function setBetAmountInUSD(uint256 _amount) public onlyOwner {
+        betAmount = _amount;
+        emit Events.BetAmountSet(_amount);
+    }
+
+    function setPlayerIdRemmapings(uint256 _gameId, string memory _remapping) public onlyOwner {
+        playerIdRemappings[_gameId] = _remapping;
+        emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
+    }
+
 
     // Testing helpers
-    function setSelectSquadEnabled(uint256 _gameId, bool _isSelectSquadEnabled) public onlyOwner {
-        isSelectSquadEnabled[_gameId] = _isSelectSquadEnabled;
-    }
 
     function updateSourceCode(string memory _sourceCode) public onlyOwner {
         sourceCode=_sourceCode;
@@ -188,10 +183,10 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
     //     isZkVerificationEnabled = _isZkVerificationEnabled;
     // }
 
-    function setGameResults(uint256 _gameId, string memory _gameResults, bytes32 _pointsMerkleRoot) public onlyOwner {
-        gameResults[_gameId] = _gameResults;
+    function setpointsIpfsHash(uint256 _gameId, string memory _pointsIpfsHash, bytes32 _pointsMerkleRoot) public onlyOwner {
+        pointsIpfsHash[_gameId] = _pointsIpfsHash;
         pointsMerkleRoot[_gameId] = _pointsMerkleRoot;
-        emit Events.ResultsPublished(_gameId, _pointsMerkleRoot, _gameResults);
+        emit Events.ResultsPublished(_gameId, _pointsMerkleRoot, _pointsIpfsHash);
     }
     
 }

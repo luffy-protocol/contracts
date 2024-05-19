@@ -10,7 +10,7 @@ event PlayersMetadataUpdated(uint256 playersMetadataLength, string[] playersMeta
 event SquadRegistered(uint256 gameId, bytes32 squadHash, address registrant);
 event PointsClaimed(uint256 gameId, address claimer, uint256 totalPoints);
 event ResultsFetchInitiated(uint256 gameId, bytes32 requestId);
-event ResultsPublished(uint256 gameId, bytes32 pointsMerkleRoot, string gameResults);
+event ResultsPublished(uint256 gameId, bytes32 pointsMerkleRoot, string pointsIpfsHash);
 event ResultsFetchFailed(uint256 gameId, bytes32 requestId, bytes error);
 event ClaimPointsDisabled(uint256 gameId);
 event NewTokensWhitelisted(address[] tokens);
