@@ -38,13 +38,16 @@ abstract contract PointsCompute is FunctionsClient, ILogAutomation {
     event OracleResultsPublished(bytes32 requestId, uint256 gameId, bytes32 pointsMerkleRoot, string pointsIpfsHash);
 
 
-    function _triggerCompute(uint256 gameId, string[] memory args, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) internal returns(bytes32){
+    function _triggerCompute(uint256 gameId, string memory remapping, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) internal returns(bytes32){
         FunctionsRequest.Request memory req;
         req.initializeRequestForInlineJavaScript(sourceCode);
         req.addDONHostedSecrets(
             donHostedSecretsSlotID,
             donHostedSecretsVersion
         );
+        string[] memory args= new string[](2);
+        args[0]=gameId.toString();
+        args[1]=remapping;
         if (args.length > 0) req.setArgs(args);
         latestRequestId = _sendRequest(
             req.encodeCBOR(),
@@ -56,19 +59,5 @@ abstract contract PointsCompute is FunctionsClient, ILogAutomation {
         requestToGameId[latestRequestId]=gameId;
         return latestRequestId;
     }
-
-
-//    function fulfillRequest(
-//         bytes32 requestId,
-//         bytes memory response,
-//         bytes memory err
-//     ) internal override {
-//         if (latestRequestId != requestId) {
-//             revert UnexpectedRequestID(requestId);
-//         }
-//         latestResponse = response;
-//         latestError = err;
-//         emit Response(requestId, latestResponse, latestError);
-//     }
 
 }

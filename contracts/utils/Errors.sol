@@ -13,3 +13,4 @@ error ResultsNotPublished(uint256 gameId);
 error InvalidBetToken(address betToken);
 error InsufficientBetAmount(address owner, address token, uint256 betAmountInUSD, uint256 betAmountInWei);
 error InsufficientAllowance(address owner, uint8 tokenId, uint256 betAmountInWei);
+error InvalidAutomationCaller(address caller);

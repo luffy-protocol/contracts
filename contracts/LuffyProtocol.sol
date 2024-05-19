@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import "./abstract/PriceFeeds.sol";
 import "./abstract/ZeroKnowledge.sol";
 import "./abstract/PointsCompute.sol";
+import "./abstract/Automation.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./utils/Errors.sol";
 import "./utils/Events.sol";
@@ -28,6 +29,7 @@ import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/Confir
 
 
 // Things that happen in this contract
+// Intial setup: Set Automation Forwarder Address.
 // 1. Set player id remappings manually for each game along with their start times.
 // 2. Choose squad for a game and place bet. Handle Crosschain bets too.
 // 3. Once match gets ended, Chainlink Time based automation is triggers the Chainlink Functions.
@@ -36,18 +38,15 @@ import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/Confir
 // 6. Users will call claim points by verifying the zero knowledge proof.
 // 7. They will wait for 48 hours and claim the rewards based on the position in the leaderboard.
 
-
-contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwner{
+contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwner, Automation{
 
     uint256 public betAmount = 5 * 10 ** 8;
     mapping(address=>bool) public whitelistedBetTokens;
 
     mapping(uint256=>mapping(address=>bytes32)) public gameToSquadHash;
-    mapping(uint256=>mapping(address=>uint256)) public gamePoints;
     mapping(uint256=>string) public playerIdRemappings;
-    string[] public playersMetadata;
 
-    constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId, AggregatorV3Interface[3] memory _priceFeeds) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) PriceFeeds(_priceFeeds) ConfirmedOwner(msg.sender) 
+    constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId, address _automationRegistry, AggregatorV3Interface[3] memory _priceFeeds) Automation(_automationRegistry) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) PriceFeeds(_priceFeeds) ConfirmedOwner(msg.sender) 
     {}
 
     modifier isBetTokenWhitelisted(uint8 _token){
@@ -57,6 +56,11 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
         _;
     }
 
+    modifier onlyOwnerOrAutomation(uint8 _automation){
+        address forwarderAddress=getForwarderAddress(_automation);
+        if(msg.sender!=owner()&&msg.sender!=forwarderAddress) revert InvalidAutomationCaller(msg.sender);
+        _;
+    }
 
     function whitelistBetTokens(address[] memory _betTokens) public onlyOwner {
         for(uint256 i=0; i<_betTokens.length; i++){
@@ -66,11 +70,8 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
     }
 
 
-
-
-
     function makeSquadAndPlaceBetETH(uint256 _gameId, bytes32 _squadHash) public payable{
-        if(playerIdRemappings[_gameId].length>0) revert SelectSquadDisabled(_gameId);
+        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
 
         uint256 betAmountInUSD=getValueInUSD(msg.value,0);
         if(betAmountInUSD < betAmount) revert InsufficientBetAmount(msg.sender, address(0), betAmountInUSD, msg.value);
@@ -78,7 +79,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
     }
 
     function makeSquadAndPlaceBetToken(uint256 _gameId, bytes32 _squadHash, uint8 _token, uint256 betAmountInWei) isBetTokenWhitelisted(_token) public {
-        if(playerIdRemappings[_gameId].length>0) revert SelectSquadDisabled(_gameId);
+        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
 
         address betToken=address(priceFeeds[_token]);
         if(IERC20(betToken).allowance(msg.sender, address(this)) < betAmountInWei) revert InsufficientAllowance(msg.sender, _token, betAmountInWei);
@@ -95,43 +96,9 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
         emit Events.BetPlaced(_gameId, _squadHash, msg.sender, token);
     }
 
-    // function claimPoints(uint256 _gameId, uint256 totalPoints, bytes calldata _proof) public {
-    //     // Enable in Production
-    //     // if(isSelectSquadEnabled[_gameId]) revert SelectSquadDisabled(_gameId);
-    //     if(pointsMerkleRoot[_gameId] == bytes32(0)) revert ResultsNotPublished(_gameId);
-
-    //     if(isZkVerificationEnabled){
-    //         bytes32[] memory _publicInputs=new bytes32[](2);
-    //         _publicInputs[0]=pointsMerkleRoot[_gameId];
-    //         _publicInputs[1]=gameToSquadHash[_gameId][msg.sender];
-    //         _publicInputs[2]= bytes32(totalPoints);
-           
-    //     } else{
-    //         gamePoints[_gameId][msg.sender] = totalPoints;
-    //         emit Events.PointsClaimed(_gameId, msg.sender, totalPoints);
-    //     }
-    // }
-
-    // Chainlink Functions
-    // function triggerFetchpointsIpfsHash(uint256 _gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwner{
-    //     FunctionsRequest.Request memory req;
-    //     req.initializeRequestForInlineJavaScript(sourceCode);
-    //     req.addDONHostedSecrets(
-    //         donHostedSecretsSlotID,
-    //         donHostedSecretsVersion
-    //     );
-    //     string[] memory args= new string[](2);
-    //     args[0]=Strings.toString(_gameId);
-    //     args[1]=playerIdRemappings[_gameId];
-    //     latestRequestId = _sendRequest(
-    //         req.encodeCBOR(),
-    //         functionsSubscriptionId,
-    //         oracleCallbackGasLimit,
-    //         donId
-    //     );
-    //     requestToGameId[latestRequestId] = _gameId;
-    //     emit Events.ResultsFetchInitiated(_gameId, latestRequestId);
-    // }
+    function triggerFetchResults(uint256 gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwnerOrAutomation(0) {
+        _triggerCompute(gameId,playerIdRemappings[gameId], donHostedSecretsSlotID, donHostedSecretsVersion);
+    }
 
     function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
         latestResponse = response;
@@ -140,16 +107,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
         else emit OracleResponseSuccess(requestId, response);
     } 
 
-          
-    function checkLog(
-        Log calldata log,
-        bytes memory
-    ) external pure returns (bool upkeepNeeded, bytes memory performData) {
-        upkeepNeeded = true;
-        performData = log.data;
-    }
-
-    function performUpkeep(bytes calldata performData) external override {
+    function performUpkeep(bytes calldata performData) external override onlyOwnerOrAutomation(1){
         (bytes32 _requestId, bytes memory response) = abi.decode(performData, (bytes32, bytes));
         (bytes32 _merkleRoot, string memory _pointsIpfsHash)=abi.decode(response, (bytes32, string));
 
@@ -158,7 +116,6 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
         pointsMerkleRoot[_gameId]=_merkleRoot;
         emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
     }
-
 
     // Only Owner
 
@@ -171,7 +128,6 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, PriceFeeds, ConfirmedOwn
         playerIdRemappings[_gameId] = _remapping;
         emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
     }
-
 
     // Testing helpers
 
