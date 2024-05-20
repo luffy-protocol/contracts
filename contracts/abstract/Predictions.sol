@@ -38,24 +38,26 @@ abstract contract Predictions is PriceFeeds, CCIPReceiver, ConfirmedOwner{
     event CrosschainReceived(bytes32 messageId);
     event BetAmountSet(uint256 amount);
 
-    function setCrosschainAddresses(uint64[] memory _destinationSelectors, address[] memory _destinationAddresses) public onlyOwner {
+    function setCrosschainAddresses(uint64[] memory _destinationSelectors, address[] memory _destinationAddresses) external onlyOwner {
          for(uint256 i=0; i<_destinationSelectors.length; i++) crosschainAddresses[_destinationSelectors[i]] = _destinationAddresses[i];
         emit CrosschainAddressesSet(_destinationSelectors, _destinationAddresses);
     }
 
-    function makeSquadAndPlaceBetETH(uint256 _gameId, bytes32 _squadHash) public payable{
+    function makeSquadAndPlaceBetETH(uint256 _gameId, bytes32 _squadHash) public virtual payable returns(uint256) {
         if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
 
         uint256 _betAmountInUSD=getValueInUSD(msg.value, 0);
 
-        // TODO: Perform a swap to convert the bet amount to USDC
+        // TODO: Swap ETH to USDC
         if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, address(0), _betAmountInUSD, msg.value);
         
         _makeSquad(_gameId, _squadHash, msg.sender, msg.value);
+        // Return the total amount that was used for both the bet and the swap combined
+        return msg.value;
     }
 
 
-    function makeSquadAndPlaceBetLINK(uint256 _gameId, bytes32 _squadHash, uint256 _betAmountInWei) public {
+    function makeSquadAndPlaceBetLINK(uint256 _gameId, bytes32 _squadHash, uint256 _betAmountInWei) public virtual payable returns(uint256) {
         if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
 
         if(IERC20(linkToken).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, linkToken, _betAmountInWei);
@@ -69,9 +71,11 @@ abstract contract Predictions is PriceFeeds, CCIPReceiver, ConfirmedOwner{
         if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, linkToken, _betAmountInUSD, _betAmountInWei);
 
         _makeSquad(_gameId, _squadHash, msg.sender, _betAmountInWei);
+        // Return the total amount that was used for both the bet and the swap combined
+        return _betAmountInWei;
     }
 
-    function makeSquadAndPlaceBetUSDC(uint256 _gameId, bytes32 _squadHash, uint256 _betAmountInWei) public {
+    function makeSquadAndPlaceBetUSDC(uint256 _gameId, bytes32 _squadHash, uint256 _betAmountInWei) public virtual payable {
         if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
 
         if(IERC20(usdcToken).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, usdcToken, _betAmountInWei);
@@ -106,7 +110,7 @@ abstract contract Predictions is PriceFeeds, CCIPReceiver, ConfirmedOwner{
         emit BetPlaced(_gameId, _squadHash, player, amount);
     }
 
-    function setBetAmountInUSDC(uint256 _amount) public onlyOwner {
+    function setBetAmountInUSDC(uint256 _amount) external onlyOwner {
         BET_AMOUNT_IN_WEI = _amount;
         emit BetAmountSet(_amount);
     }

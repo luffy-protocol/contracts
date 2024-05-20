@@ -86,7 +86,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     event RewardsClaimed(uint256 gameId, address claimer, uint256 value, uint256 position);
     event RewardsWithdrawn(address claimer, uint256 value);
 
-    function setPlayerIdRemmapings(uint256 _gameId, string memory _remapping) public onlyOwner {
+    function setPlayerIdRemmapings(uint256 _gameId, string memory _remapping) external onlyOwner {
         playerIdRemappings[_gameId] = _remapping;
         emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
     }
@@ -111,7 +111,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
     }
 
-    function claimPoints(uint256 _gameId, bytes32 _playerIds, uint256 _totalPoints, bytes memory _proof) public {
+    function claimPoints(uint256 _gameId, bytes32 _playerIds, uint256 _totalPoints, bytes memory _proof) external {
         if(block.timestamp > results[_gameId].publishedTimestamp + 2 days) revert ClaimWindowComplete(block.timestamp, results[_gameId].publishedTimestamp + 2 days);
         bytes32[] memory _publicInputs=new bytes32[](2);
         _publicInputs[0]=gameToSquadHash[_gameId][msg.sender];
@@ -144,7 +144,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit RewardsWithdrawn(msg.sender, value);
     }
 
-    function claimAndWithdrawRewards(uint256 _gameId, address _player, uint256 _amountInWei, uint256 _position) public onlyOwner{
+    function claimAndWithdrawRewards(uint256 _gameId, address _player, uint256 _amountInWei, uint256 _position) external onlyOwner{
         claimRewards(_gameId, _player, _amountInWei, _position);
         _withdrawRewards();
     }
@@ -158,27 +158,27 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     // 5. Claim rewards on chain
     // 6. Withdraw rewards on chain
 
-    function zmakeSquadTest(uint256 _gameId, bytes32 _squadHash, address _player, uint256 _amount) public {
+    function zmakeSquadTest(uint256 _gameId, bytes32 _squadHash, address _player, uint256 _amount) external {
         emit BetPlaced(_gameId, _squadHash, _player, _amount);
     }
 
-    function zpostResultsTest(bytes32 _requestId, uint256 _gameId, bytes32 _merkleRoot, string memory _pointsIpfsHash) public{
+    function zpostResultsTest(bytes32 _requestId, uint256 _gameId, bytes32 _merkleRoot, string memory _pointsIpfsHash) external{
         emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
     }
 
-    function zclaimPointsTest(uint256 _gameId, address _claimer,bytes32 _playerIds, uint256 _totalPoints) public{
+    function zclaimPointsTest(uint256 _gameId, address _claimer,bytes32 _playerIds, uint256 _totalPoints) external{
         emit PointsClaimed(_gameId, _claimer, _playerIds, _totalPoints);
     }
 
-    function zclaimRewardsTest(uint256 _gameId, address _claimer, uint256 _amount, uint256 _position) public{
+    function zclaimRewardsTest(uint256 _gameId, address _claimer, uint256 _amount, uint256 _position) external{
         emit RewardsClaimed(_gameId, _claimer, _amount, _position);
     }
 
-    function zwithdrawRewardsTest(address _claimer, uint256 _amount) public{
+    function zwithdrawRewardsTest(address _claimer, uint256 _amount) external{
         emit RewardsWithdrawn(_claimer, _amount);
     }
 
-    function zsetPlayerIdRemmapings(uint256 _gameId, string memory _remapping) public  {
+    function zsetPlayerIdRemmapings(uint256 _gameId, string memory _remapping) external  {
         emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
     }
 

@@ -15,7 +15,7 @@ abstract contract Automation is ILogAutomation, ConfirmedOwner{
         automationRegistry=IKeeperRegistryMaster(_automationRegistry); 
     }
 
-    function setUpKeepIds(uint256[2] memory _upKeepIds) public onlyOwner{
+    function setUpKeepIds(uint256[2] memory _upKeepIds) external onlyOwner{
         upKeepIds=_upKeepIds;
     }
 
