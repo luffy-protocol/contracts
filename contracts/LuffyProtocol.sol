@@ -5,7 +5,6 @@ import "./abstract/Predictions.sol";
 import "./abstract/ZeroKnowledge.sol";
 import "./abstract/PointsCompute.sol";
 import "./abstract/Automation.sol";
-import "./utils/Events.sol";
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -85,10 +84,11 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     event PointsClaimed(uint256 gameid, address claimer, bytes32 playerIds, uint256 totalPoints);
     event RewardsClaimed(uint256 gameId, address claimer, uint256 value, uint256 position);
     event RewardsWithdrawn(address claimer, uint256 value);
+    event GamePlayerIdRemappingSet(uint256 gameId, string remapping);
 
     function setPlayerIdRemmapings(uint256 _gameId, string memory _remapping) external onlyOwner {
         playerIdRemappings[_gameId] = _remapping;
-        emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
+        emit GamePlayerIdRemappingSet(_gameId, _remapping);
     }
 
     function triggerFetchResults(uint256 gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwnerOrAutomation(0) {
@@ -179,7 +179,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     }
 
     function zsetPlayerIdRemmapings(uint256 _gameId, string memory _remapping) external  {
-        emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
+        emit GamePlayerIdRemappingSet(_gameId, _remapping);
     }
 
 
