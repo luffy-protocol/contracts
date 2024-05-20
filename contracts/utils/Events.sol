@@ -14,7 +14,6 @@ event ResultsPublished(uint256 gameId, bytes32 pointsMerkleRoot, string pointsIp
 event ResultsFetchFailed(uint256 gameId, bytes32 requestId, bytes error);
 event ClaimPointsDisabled(uint256 gameId);
 event NewTokensWhitelisted(address[] tokens);
-event BetAmountSet(uint256 amount);
 event BetPlaced(uint256 gameId, bytes32 squadHash, address player, address token);
 
 }

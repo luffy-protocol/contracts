@@ -12,22 +12,20 @@ error SelectSquadDisabled(uint256 gameId);
 error InsufficientBetAmount(address sender, address token, uint256 betInUSD, uint256 betInWei);
 error InsufficientAllowance(address sender, address token, uint256 amountInWei);
 error InvalidCrosschainCaller(address caller);
+
 abstract contract Predictions is PriceFeeds, CCIPReceiver, ConfirmedOwner{
 
-    uint256 public betAmount = 5 * 10 ** 8;
+    uint256 public BET_AMOUNT_IN_WEI = 1 * 10 ** 15;
     mapping(uint256=>mapping(address=>bytes32)) public gameToSquadHash;
     mapping(uint256=>string) public playerIdRemappings;
-    mapping(address=>bool) public whitelistedBetTokens;
     mapping(uint64=>address) public crosschainAddresses;
 
+    address public usdcToken;
+    address public linkToken;
 
-    constructor(address _ccipRouter, AggregatorV3Interface[3] memory _priceFeeds) CCIPReceiver(_ccipRouter) PriceFeeds(_priceFeeds) ConfirmedOwner(msg.sender){}
-
-
-    modifier isBetTokenWhitelisted(uint8 _token){
-        address _betToken=address(priceFeeds[_token]);
-        if(!whitelistedBetTokens[_betToken]) revert InvalidBetToken(_betToken);
-        _;
+    constructor(address _ccipRouter, address _usdcToken, address _linkToken, AggregatorV3Interface[2] memory _priceFeeds) CCIPReceiver(_ccipRouter) PriceFeeds(_priceFeeds) ConfirmedOwner(msg.sender){
+        usdcToken=_usdcToken;
+        linkToken=_linkToken;
     }
 
     modifier onlyAllowlisted(uint64 _selector, address _caller){
@@ -35,17 +33,10 @@ abstract contract Predictions is PriceFeeds, CCIPReceiver, ConfirmedOwner{
         _;
     }
 
-    event NewTokensWhitelisted(address[] betTokens);
     event BetPlaced(uint256 gameId, bytes32 squadHash, address caller, uint256 amount);
     event CrosschainAddressesSet(uint64[] destinationSelectors, address[] destinationAddresses); 
     event CrosschainReceived(bytes32 messageId);
-    
-    function whitelistBetTokens(address[] memory _betTokens) public  onlyOwner{
-        for(uint256 i=0; i<_betTokens.length; i++){
-            whitelistedBetTokens[_betTokens[i]] = true;
-        }
-        emit NewTokensWhitelisted(_betTokens);
-    }
+    event BetAmountSet(uint256 amount);
 
     function setCrosschainAddresses(uint64[] memory _destinationSelectors, address[] memory _destinationAddresses) public onlyOwner {
          for(uint256 i=0; i<_destinationSelectors.length; i++) crosschainAddresses[_destinationSelectors[i]] = _destinationAddresses[i];
@@ -55,23 +46,41 @@ abstract contract Predictions is PriceFeeds, CCIPReceiver, ConfirmedOwner{
     function makeSquadAndPlaceBetETH(uint256 _gameId, bytes32 _squadHash) public payable{
         if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
 
-        uint256 betAmountInUSD=getValueInUSD(msg.value,0);
-        if(betAmountInUSD < betAmount) revert InsufficientBetAmount(msg.sender, address(0), betAmountInUSD, msg.value);
+        uint256 _betAmountInUSD=getValueInUSD(msg.value, 0);
+
+        // TODO: Perform a swap to convert the bet amount to USDC
+        if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, address(0), _betAmountInUSD, msg.value);
         
         _makeSquad(_gameId, _squadHash, msg.sender, msg.value);
     }
 
-    function makeSquadAndPlaceBetToken(uint256 _gameId, bytes32 _squadHash, uint8 _token, uint256 betAmountInWei) isBetTokenWhitelisted(_token) public {
+
+    function makeSquadAndPlaceBetLINK(uint256 _gameId, bytes32 _squadHash, uint256 _betAmountInWei) public {
         if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
 
-        address betToken=address(priceFeeds[_token]);
-        if(IERC20(betToken).allowance(msg.sender, address(this)) < betAmountInWei) revert InsufficientAllowance(msg.sender, betToken, betAmountInWei);
+        if(IERC20(linkToken).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, linkToken, _betAmountInWei);
 
-        uint256 betAmountInUSD=getValueInUSD(betAmountInWei, _token);
-        if(betAmountInUSD < betAmount) revert InsufficientBetAmount(msg.sender, betToken, betAmountInUSD, betAmountInWei);
+        uint256 _betAmountInUSD=getValueInUSD(_betAmountInWei, 1);
 
-        IERC20(betToken).transferFrom(msg.sender, address(this), betAmountInWei);
-        _makeSquad(_gameId, _squadHash, msg.sender, betAmountInWei);
+        IERC20(linkToken).transferFrom(msg.sender, address(this), _betAmountInWei);
+
+        // TODO: Swap LINK to USDC
+
+        if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, linkToken, _betAmountInUSD, _betAmountInWei);
+
+        _makeSquad(_gameId, _squadHash, msg.sender, _betAmountInWei);
+    }
+
+    function makeSquadAndPlaceBetUSDC(uint256 _gameId, bytes32 _squadHash, uint256 _betAmountInWei) public {
+        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
+
+        if(IERC20(usdcToken).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, usdcToken, _betAmountInWei);
+
+        IERC20(usdcToken).transferFrom(msg.sender, address(this), _betAmountInWei);
+
+        if(_betAmountInWei < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(msg.sender, usdcToken, _betAmountInWei, _betAmountInWei);
+
+        _makeSquad(_gameId, _squadHash, msg.sender, _betAmountInWei);
     }
 
 
@@ -86,6 +95,8 @@ abstract contract Predictions is PriceFeeds, CCIPReceiver, ConfirmedOwner{
         ) 
     {
         (uint256 gameId, address player, bytes32 squadHash) = abi.decode(any2EvmMessage.data, (uint256, address, bytes32));
+        if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(msg.sender, usdcToken, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
+
         _makeSquad(gameId, squadHash, player, any2EvmMessage.destTokenAmounts[0].amount);
         emit CrosschainReceived(any2EvmMessage.messageId);
     }
@@ -93,6 +104,11 @@ abstract contract Predictions is PriceFeeds, CCIPReceiver, ConfirmedOwner{
     function _makeSquad(uint256 _gameId, bytes32 _squadHash, address player, uint256 amount) internal {
         gameToSquadHash[_gameId][player] = _squadHash;
         emit BetPlaced(_gameId, _squadHash, player, amount);
+    }
+
+    function setBetAmountInUSDC(uint256 _amount) public onlyOwner {
+        BET_AMOUNT_IN_WEI = _amount;
+        emit BetAmountSet(_amount);
     }
 
 }

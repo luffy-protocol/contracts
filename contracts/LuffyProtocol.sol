@@ -36,8 +36,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // 3. Once match gets ended, Chainlink Time based automation is triggers the Chainlink Functions. DONE
 // 4. Chainlink Functions fetches the results and triggers a log DONE
 // 5. Chainlink Log Trigger Automation executes the code logic to assign the squad points ipfs hash and merkle root. DONE
-// 6. Users will call claim points by verifying the zero knowledge proof.
-// 7. They will wait for 48 hours and claim the rewards based on the position in the leaderboard.
+// 6. Users will call claim points by verifying the zero knowledge proof. DONE
+// 7. They will wait for 48 hours and claim the rewards based on the position in the leaderboard. DONE
 
 
 contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
@@ -49,10 +49,24 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
 
 
     mapping(address=>uint256) public claimmables;
+    mapping(uint256=>mapping(address=>uint256)) public rankings;
+    mapping(uint256=>mapping(address=>uint256)) public winnings;
 
-    address public USDC_TOKEN=0x5425890298aed601595a70AB815c96711a31Bc65;
+    struct ConstuctorParams{
+        address ccipRouter;
+        address functionsRouter;
+        address usdcToken;
+        address linkToken;
+        address automationRegistry;
+        AggregatorV3Interface[2] priceFeeds;
+        string sourceCode;
+        uint64 subscriptionId;
+        bytes32 donId;
 
-    constructor(address _ccipRouter, address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId, address _automationRegistry, AggregatorV3Interface[3] memory _priceFeeds) Automation(_automationRegistry) PointsCompute(_functionsRouter,_sourceCode,_subscriptionId,_donId) Predictions(_ccipRouter, _priceFeeds) {}
+    }
+
+
+    constructor(ConstuctorParams memory _params) Automation(_params.automationRegistry) PointsCompute(_params.functionsRouter,_params.sourceCode,_params.subscriptionId,_params.donId) Predictions(_params.ccipRouter, _params.usdcToken, _params.linkToken, _params.priceFeeds) {}
 
     modifier onlyOwnerOrAutomation(uint8 _automation){
         address forwarderAddress=getForwarderAddress(_automation);
@@ -68,14 +82,9 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         (bool success, )=owner().call{value: msg.value}("");
     }
     
-    event PointsClaimed(uint256 gameid, address claimer, uint256 totalPoints);
-    event RewardsClaimed(uint256 gameId, address claimer, uint256 value);
+    event PointsClaimed(uint256 gameid, address claimer, bytes32 playerIds, uint256 totalPoints);
+    event RewardsClaimed(uint256 gameId, address claimer, uint256 value, uint256 position);
     event RewardsWithdrawn(address claimer, uint256 value);
-
-    function setBetAmountInUSDC(uint256 _amount) public onlyOwner {
-        betAmount = _amount;
-        emit Events.BetAmountSet(_amount);
-    }
 
     function setPlayerIdRemmapings(uint256 _gameId, string memory _remapping) public onlyOwner {
         playerIdRemappings[_gameId] = _remapping;
@@ -102,32 +111,42 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
     }
 
-    function claimPoints(uint256 _gameId, uint256[11] memory playerIds, uint256 _totalPoints, bytes memory proof) public {
+    function claimPoints(uint256 _gameId, bytes32 _playerIds, uint256 _totalPoints, bytes memory _proof) public {
         if(block.timestamp > results[_gameId].publishedTimestamp + 2 days) revert ClaimWindowComplete(block.timestamp, results[_gameId].publishedTimestamp + 2 days);
-
-        // TODO: Pass playerIds in.
-        // 0 -  
-        // 1 -
-        // 2 -
-        // 3 -
         bytes32[] memory _publicInputs=new bytes32[](2);
-
+        _publicInputs[0]=gameToSquadHash[_gameId][msg.sender];
+        _publicInputs[1]=bytes32(_totalPoints);
+        // _publicInputs[2]=playerIds;
+        _verifyProof(_proof, _publicInputs);
+        emit PointsClaimed(_gameId, msg.sender, _playerIds, _totalPoints);
     }
 
-    function claimRewards(uint256 _gameId) public{
+    function claimRewards(uint256 _gameId, address _player, uint256 _amountInWei, uint256 _position) public onlyOwner{
         if(block.timestamp < results[_gameId].publishedTimestamp + 2 days) revert ClaimWindowInComplete(block.timestamp, results[_gameId].publishedTimestamp + 2 days);
         // Implement Logic that sets money to claimmables and position in leaderboard
+
+        claimmables[_player]+=_amountInWei;
+        rankings[_gameId][_player]=_position;
+        winnings[_gameId][_player]=_amountInWei;
+
+        emit RewardsClaimed(_gameId, _player, _amountInWei, _position);
     }
 
-    function withdrawRewards() public{
-        if(claimmables[msg.sender]>0)
-        {
-            if(IERC20(USDC_TOKEN).balanceOf(address(this))<claimmables[msg.sender]) revert PanicClaimError();
-            uint256 value=claimmables[msg.sender];
-            claimmables[msg.sender]=0;
-            IERC20(USDC_TOKEN).transferFrom(address(this), msg.sender, value);
-            emit RewardsWithdrawn(msg.sender, value);
-        }
+    function withdrawRewards() external{
+        if(claimmables[msg.sender]>0) _withdrawRewards();
+    }
+
+    function _withdrawRewards() internal{
+        if(IERC20(usdcToken).balanceOf(address(this))<claimmables[msg.sender]) revert PanicClaimError();
+        uint256 value=claimmables[msg.sender];
+        claimmables[msg.sender]=0;
+        IERC20(usdcToken).transferFrom(address(this), msg.sender, value);
+        emit RewardsWithdrawn(msg.sender, value);
+    }
+
+    function claimAndWithdrawRewards(uint256 _gameId, address _player, uint256 _amountInWei, uint256 _position) public onlyOwner{
+        claimRewards(_gameId, _player, _amountInWei, _position);
+        _withdrawRewards();
     }
 
     // Testing Helpers for subgraph
@@ -147,12 +166,12 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
     }
 
-    function zclaimPointsTest(uint256 _gameId, address _claimer, uint256 _totalPoints) public{
-        emit PointsClaimed(_gameId, _claimer, _totalPoints);
+    function zclaimPointsTest(uint256 _gameId, address _claimer,bytes32 _playerIds, uint256 _totalPoints) public{
+        emit PointsClaimed(_gameId, _claimer, _playerIds, _totalPoints);
     }
 
-    function zclaimRewardsTest(uint256 _gameId, address _claimer, uint256 _amount) public{
-        emit RewardsClaimed(_gameId, _claimer, _amount);
+    function zclaimRewardsTest(uint256 _gameId, address _claimer, uint256 _amount, uint256 _position) public{
+        emit RewardsClaimed(_gameId, _claimer, _amount, _position);
     }
 
     function zwithdrawRewardsTest(address _claimer, uint256 _amount) public{

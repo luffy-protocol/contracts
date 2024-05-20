@@ -5,10 +5,11 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interf
 
 abstract contract PriceFeeds {
     
-    AggregatorV3Interface[3] public priceFeeds;
+    AggregatorV3Interface[2] public priceFeeds;
+    // 0 - ETH/USD
+    // 1 - LINK/USD
 
-
-    constructor(AggregatorV3Interface[3] memory _priceFeedAddreses)
+    constructor(AggregatorV3Interface[2] memory _priceFeedAddreses)
     {
         priceFeeds=_priceFeedAddreses;
     }
