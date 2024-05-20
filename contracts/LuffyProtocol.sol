@@ -159,6 +159,9 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit RewardsWithdrawn(_claimer, _amount);
     }
 
+    function zsetPlayerIdRemmapings(uint256 _gameId, string memory _remapping) public  {
+        emit Events.GamePlayerIdRemappingSet(_gameId, _remapping);
+    }
 
 
 }
