@@ -122,7 +122,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
     }
 
 
-    function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal override{
+    function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal virtual override{
         VrfTracker memory _game = vrfRequests[_requestId];
         uint256 _randomWord=_randomWords[0];
         gameToPrediction[_game.gameId][_game.player].captain = uint8(_randomWord % 11);

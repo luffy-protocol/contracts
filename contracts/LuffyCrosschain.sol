@@ -15,6 +15,8 @@ contract LuffyCrosschain is Predictions{
     uint64 public constant DESTINATION_CHAIN_SELECTOR=14767482510784806043; // AvalancheFuji Chain Selector
     address public protocolAddress;
 
+    mapping(address=>uint256) public valueBalance;
+
 
     constructor(address _protocolAddress) ConfirmedOwner(msg.sender){
         protocolAddress=_protocolAddress;
@@ -22,28 +24,33 @@ contract LuffyCrosschain is Predictions{
 
     event CrosschainMessageSent(bytes32 messageId);
 
-    // function makeSquadAndPlaceBetETH(uint256 _gameId, bytes32 _squadHash) public payable override returns(uint256){
-    //     // uint256 _amountSpent=super.makeSquadAndPlaceBetETH(_gameId, _squadHash);
-    //     // bytes memory _data=abi.encode(_gameId, msg.sender, _squadHash);
-    //     // bytes32 _messageId = _sendMessagePayNative(msg.value - _amountSpent, _data);
-    //     // emit CrosschainMessageSent(_messageId);
-    //     // return 0;
-    // }
+    function makeSquadAndPlaceBet(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain) external payable{
+        uint256 _remainingValue=_makeSquadAndPlaceBet(_gameId, _squadHash, _amount, _token, _captain, _viceCaptain);
+        bytes memory _data=abi.encode(_gameId, msg.sender, _squadHash, _token, _captain, _viceCaptain, false);
+        _sendMessagePayNative(_remainingValue, _data);
+    }
 
-    // function makeSquadAndPlaceBetLINK(uint256 _gameId, bytes32 _squadHash, uint256 _betAmountInWei) public payable override returns(uint256){
-    //     // uint256 _amountSpent=super.makeSquadAndPlaceBetLINK(_gameId, _squadHash, _betAmountInWei);
-    //     // bytes memory _data=abi.encode(_gameId, msg.sender, _squadHash);
-    //     // bytes32 _messageId = _sendMessagePayNative(msg.value - _amountSpent, _data);
-    //     // emit CrosschainMessageSent(_messageId);
-    //     // return 0;
-    // }
+    function makeSquadAndPlaceBetRandom(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token) external payable{
+        uint256 _remainingValue=_makeSquadAndPlaceBetRandom(_gameId, _squadHash, _amount, _token);
+        valueBalance[msg.sender]=_remainingValue;
+    }
 
-    // function makeSquadAndPlaceBetUSDC(uint256 _gameId, bytes32 _squadHash, uint256 _betAmountInWei) public payable override{
-    //     // super.makeSquadAndPlaceBetUSDC(_gameId, _squadHash, _betAmountInWei);
-    //     // bytes memory _data=abi.encode(_gameId, msg.sender, _squadHash);
-    //     // bytes32 _messageId = _sendMessagePayNative(msg.value, _data);
-    //     // emit CrosschainMessageSent(_messageId);
-    // }
+    function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal override{
+        VrfTracker memory _game = vrfRequests[_requestId];
+        uint256 _randomWord=_randomWords[0];
+        gameToPrediction[_game.gameId][_game.player].captain = uint8(_randomWord % 11);
+        _randomWord = _randomWord / 11;
+        gameToPrediction[_game.gameId][_game.player].viceCaptain = uint8(_randomWord % 11);
+
+        Prediction memory _prediction=gameToPrediction[_game.gameId][_game.player];
+
+        emit BetPlaced(_game.gameId, _game.player, gameToPrediction[_game.gameId][_game.player]);
+        
+        bytes memory _data=abi.encode(_game.gameId, _game.player, _prediction.squadHash, _prediction.token, _prediction.captain, _prediction.viceCaptain, true);
+
+        _sendMessagePayNative(valueBalance[_game.player], _data);
+        
+    }
 
 
     function _sendMessagePayNative(uint256 _fee, bytes memory _data) internal returns (bytes32 messageId)
@@ -61,7 +68,7 @@ contract LuffyCrosschain is Predictions{
             DESTINATION_CHAIN_SELECTOR,
             evm2AnyMessage
         );
-
+        emit CrosschainMessageSent(messageId);
         return messageId;
     }
 
@@ -90,9 +97,9 @@ contract LuffyCrosschain is Predictions{
         protocolAddress=_protocolAddress;
     }
 
-    function getCrosschainFee(uint64 destinationSelector, uint256 _gameId, bytes32 squadHash) external returns(uint256){
+    function getCrosschainFee(uint64 destinationSelector, uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain, bool _isRandom) external returns(uint256){
         IRouterClient router = IRouterClient(this.getRouter());
-        bytes memory _data=abi.encode(_gameId, msg.sender, squadHash);
+        bytes memory _data=abi.encode(_gameId, msg.sender, _squadHash, _token, _captain, _viceCaptain, _isRandom);
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(_data);
         return router.getFee(DESTINATION_CHAIN_SELECTOR, evm2AnyMessage);
     }
