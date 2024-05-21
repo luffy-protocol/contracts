@@ -61,7 +61,6 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         AggregatorV3Interface[2] priceFeeds;
     }
 
- 
     constructor(ConstructorParams memory _params) Predictions( _params.vrfWrapper,  _params.ccipRouter,  _params.usdcToken,  _params.linkToken, _params.priceFeeds) PointsCompute(_params.sourceCode) ConfirmedOwner(msg.sender) {}
 
     modifier onlyOwnerOrAutomation(uint8 _automation){
