@@ -97,7 +97,7 @@ contract LuffyCrosschain is Predictions{
         protocolAddress=_protocolAddress;
     }
 
-    function getCrosschainFee(uint64 destinationSelector, uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain, bool _isRandom) external returns(uint256){
+    function getCrosschainFee(uint256 _gameId, bytes32 _squadHash, uint8 _token, uint8 _captain, uint8 _viceCaptain, bool _isRandom) external view returns(uint256){
         IRouterClient router = IRouterClient(this.getRouter());
         bytes memory _data=abi.encode(_gameId, msg.sender, _squadHash, _token, _captain, _viceCaptain, _isRandom);
         Client.EVM2AnyMessage memory evm2AnyMessage = _buildCCIPMessage(_data);

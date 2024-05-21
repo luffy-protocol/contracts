@@ -19,7 +19,7 @@ task("deploy-crosschain", "Deploys the LuffyCrosschain contract")
     );
 
     const args = [
-      networks[network.name].protocolAddress,
+      networks.avalancheFuji.protocolAddress,
       networks[network.name].vrfWrapper,
       networks[network.name].ccipRouter,
       networks[network.name].usdcToken,
@@ -29,6 +29,7 @@ task("deploy-crosschain", "Deploys the LuffyCrosschain contract")
         networks[network.name].linkToUsdPriceFeed,
       ],
     ];
+    console.log(args);
     const crosschainContract = await crosschainContractFactory.deploy(...args);
 
     console.log(

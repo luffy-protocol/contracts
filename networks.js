@@ -44,7 +44,7 @@ const networks = {
     chainId: 421614,
     confirmations: DEFAULT_VERIFICATION_BLOCK_CONFIRMATIONS,
     nativeCurrencySymbol: "ETH",
-    vrfWrapper: "0x5CE8D5A2BC84beb22a398CCA51996F7930313D61",
+    vrfWrapper: "0x29576aB8152A09b9DC634804e4aDE73dA1f3a3CC",
     ccipRouter: "0x2a9C5afB0d0e4BAb2BCdaE109EC4b0c4Be15a165",
     usdcToken: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
     linkToken: "0xb1D4538B4571d411F07960EF2838Ce337FE1E80E",
@@ -84,6 +84,7 @@ const networks = {
     linkToken: "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846",
     ethToUsdPriceFeed: "0x5498BB86BC934c8D34FDA08E81D444153d0D06aD",
     linkToUsdPriceFeed: "0x34C4c526902d88a3Aa98DB8a9b802603EB1E3470",
+    protocolAddress: "0xeCb2C7b68098F8Fa5318978869560d8E1bdE3D03",
   },
   optimismSepolia: {
     url:
