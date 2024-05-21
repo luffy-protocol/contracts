@@ -15,17 +15,9 @@ contract LuffyCrosschain is Predictions{
     uint64 public constant DESTINATION_CHAIN_SELECTOR=14767482510784806043; // AvalancheFuji Chain Selector
     address public protocolAddress;
 
-    struct ConstructorParams{
-        address protocolAddress;
-        address ccipRouter;
-        address USDC_TOKEN;
-        address LINK_TOKEN;
-        address vrfWrapper;
-        AggregatorV3Interface[2] priceFeedAddresses;
-    }
 
-    constructor(ConstructorParams memory _params) Predictions(_params.ccipRouter, _params.USDC_TOKEN, _params.LINK_TOKEN, _params.vrfWrapper, _params.priceFeedAddresses) ConfirmedOwner(msg.sender){
-        protocolAddress=_params.protocolAddress;
+    constructor(address _protocolAddress) ConfirmedOwner(msg.sender){
+        protocolAddress=_protocolAddress;
     }
 
     event CrosschainMessageSent(bytes32 messageId);

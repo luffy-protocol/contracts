@@ -9,7 +9,7 @@ import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 
 error InvalidBetToken(uint8 token);
-error InsufficientBetAmount(address sender, address token, uint256 betInUSD, uint256 betInWei);
+error InsufficientBetAmount(address sender, uint8 token, uint256 betInUSD, uint256 betInWei);
 error InsufficientAllowance(address sender, address token, uint256 amountInWei);
 error InvalidCrosschainCaller(address caller);
 
@@ -80,7 +80,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
         gameToPrediction[_gameId][msg.sender] = Prediction(_squadHash, _amount, _token, 12, 12, true);
 
         uint256 _randomnessPriceInNative=getRandomnessPriceInNative();
-        if(_randomnessPriceInNative>_remainingValue) revert InsufficientBetAmount(msg.sender, address(0), _randomnessPriceInNative, _remainingValue);
+        if(_randomnessPriceInNative>_remainingValue) revert InsufficientBetAmount(msg.sender, _token, _randomnessPriceInNative, _remainingValue);
         (uint256 _requestId, ) = _requestRandomness();
         vrfRequests[_requestId] = VrfTracker(_gameId, msg.sender);
         _remainingValue -= _randomnessPriceInNative;
@@ -92,7 +92,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
         uint256 _betAmountInUSD=getValueInUSD(msg.value, 0);
 
         // TODO: Swap ETH to USDC. and after swapping...
-        if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, address(0), _betAmountInUSD, msg.value);
+        if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, 0, _betAmountInUSD, msg.value);
         
         // Return the total amount that was used for both the bet and the swap combined
         return msg.value;
@@ -107,7 +107,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
 
         // TODO: Swap LINK to USDC
 
-        if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, LINK_TOKEN, _betAmountInUSD, _betAmountInWei);
+        if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, 1, _betAmountInUSD, _betAmountInWei);
 
         // Return the total amount that was used for both the bet and the swap combined
         return _betAmountInWei;
@@ -118,7 +118,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
         
         IERC20(USDC_TOKEN).transferFrom(msg.sender, address(this), _betAmountInWei);
 
-        if(_betAmountInWei < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(msg.sender, USDC_TOKEN, _betAmountInWei, _betAmountInWei);
+        if(_betAmountInWei < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(msg.sender, 2, _betAmountInWei, _betAmountInWei);
     }
 
 
@@ -141,11 +141,12 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
             abi.decode(any2EvmMessage.sender, (address))
         ) 
     {
-        (uint256 gameId, address player, bytes32 squadHash) = abi.decode(any2EvmMessage.data, (uint256, address, bytes32));
-        if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(msg.sender, USDC_TOKEN, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
+        (uint256 gameId, address player, bytes32 squadHash, uint8 token, uint8 captain, uint8 viceCaptain, bool isRandom) = abi.decode(any2EvmMessage.data, (uint256, address, bytes32, uint8, uint8, uint8, bool));
+        if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(player, token, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
 
-        // _makeSquad(gameId, squadHash, player, any2EvmMessage.destTokenAmounts[0].amount);
+        gameToPrediction[gameId][player] = Prediction(squadHash, any2EvmMessage.destTokenAmounts[0].amount, token, captain, viceCaptain, isRandom);
         emit CrosschainReceived(any2EvmMessage.messageId);
+        emit BetPlaced(gameId,  player, gameToPrediction[gameId][player]);
     }
 
     function setBetAmountInUSDC(uint256 _amount) external onlyOwner {
