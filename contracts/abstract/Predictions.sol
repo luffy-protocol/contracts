@@ -81,11 +81,9 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
 
         gameToPrediction[_gameId][msg.sender] = Prediction(_squadHash, _amount, _token, 12, 12, true);
 
-        uint256 _randomnessPriceInNative=getRandomnessPriceInNative();
-        if(_randomnessPriceInNative>_remainingValue) revert InsufficientBetAmount(msg.sender, _token, _randomnessPriceInNative, _remainingValue);
-        (uint256 _requestId, ) = _requestRandomness();
+        (uint256 _requestId, uint256 _requestPrice) = _requestRandomness();
+        _remainingValue = _remainingValue - _requestPrice;
         vrfRequests[_requestId] = VrfTracker(_gameId, msg.sender);
-        _remainingValue -= _randomnessPriceInNative;
 
         return _remainingValue;
     }

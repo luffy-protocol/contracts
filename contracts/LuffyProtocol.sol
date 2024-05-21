@@ -9,12 +9,12 @@ import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/Confir
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // Chailnink Integrations [6/6]
-// 1. Chainlink Functions - DONE
-// 2. Chainlink Data Feeds - DONE
-// 3. Chainlink VRF - PENDING
-// 4. Chainlink CCIP - DONE
-// 5. Chainlink Log Trigger Automation - DONE
-// 6. Chainlink TIme Based Automation - DONE
+// 1. Chainlink Functions - DONE Sub Id - preconfigured
+// 2. Chainlink Data Feeds - DONE No configurations
+// 3. Chainlink VRF - DONE No configurations | Direct Funding
+// 4. Chainlink CCIP - DONE No configurations | Direct Funding 
+// 5. Chainlink Log Trigger Automation - DONE Need to configure sub id
+// 6. Chainlink TIme Based Automation - DONE Need to configure sub id
 
 // Step 1: Register Squad
 // Step 2: Receive cross chain transactions
