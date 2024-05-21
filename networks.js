@@ -78,7 +78,7 @@ const networks = {
     chainId: 43113,
     confirmations: DEFAULT_VERIFICATION_BLOCK_CONFIRMATIONS,
     nativeCurrencySymbol: "AVAX",
-    vrfWrapper: "0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE",
+    vrfWrapper: "0x327B83F409E1D5f13985c6d0584420FA648f1F56",
     ccipRouter: "0xF694E193200268f9a4868e4Aa017A0118C9a8177",
     usdcToken: "0x5425890298aed601595a70AB815c96711a31Bc65",
     linkToken: "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846",
