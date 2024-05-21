@@ -3,37 +3,49 @@ pragma solidity ^0.8.10;
 
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "./PriceFeeds.sol";
+import "./Randomness.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications/CCIPReceiver.sol";
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 
-error InvalidBetToken(address token);
-error SelectSquadDisabled(uint256 gameId);
+error InvalidBetToken(uint8 token);
 error InsufficientBetAmount(address sender, address token, uint256 betInUSD, uint256 betInWei);
 error InsufficientAllowance(address sender, address token, uint256 amountInWei);
 error InvalidCrosschainCaller(address caller);
 
-abstract contract Predictions is PriceFeeds, CCIPReceiver, ConfirmedOwner{
+abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
+
+    struct Prediction{
+        bytes32 squadHash;
+        uint256 amountInWei;
+        uint8 token;
+        uint8 captain;
+        uint8 viceCaptain;
+        bool isRandom;
+    }
+
+    struct VrfTracker{
+        uint256 gameId;
+        address player;
+    }
 
     uint256 public BET_AMOUNT_IN_WEI = 1 * 10 ** 15;
-    mapping(uint256=>mapping(address=>bytes32)) public gameToSquadHash;
-    mapping(uint256=>string) public playerIdRemappings;
+    mapping(uint256=>VrfTracker) public vrfRequests;
+    mapping(uint256=>mapping(address=>Prediction)) public gameToPrediction;
     mapping(uint64=>address) public crosschainAddresses;
 
-    address public usdcToken;
-    address public linkToken;
+    address public constant CCIP_ROUTER=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    address public constant USDC_TOKEN=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    address public constant LINK_TOKEN=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
 
-    constructor(address _ccipRouter, address _usdcToken, address _linkToken, AggregatorV3Interface[2] memory _priceFeeds) CCIPReceiver(_ccipRouter) PriceFeeds(_priceFeeds) ConfirmedOwner(msg.sender){
-        usdcToken=_usdcToken;
-        linkToken=_linkToken;
-    }
+    constructor() CCIPReceiver(CCIP_ROUTER)   {}
 
     modifier onlyAllowlisted(uint64 _selector, address _caller){
         if(crosschainAddresses[_selector]!=_caller) revert InvalidCrosschainCaller(_caller);
         _;
     }
 
-    event BetPlaced(uint256 gameId, bytes32 squadHash, address caller, uint256 amount);
+    event BetPlaced(uint256 gameId, address caller, Prediction Prediction);
     event CrosschainAddressesSet(uint64[] destinationSelectors, address[] destinationAddresses); 
     event CrosschainReceived(bytes32 messageId);
     event BetAmountSet(uint256 amount);
@@ -43,50 +55,81 @@ abstract contract Predictions is PriceFeeds, CCIPReceiver, ConfirmedOwner{
         emit CrosschainAddressesSet(_destinationSelectors, _destinationAddresses);
     }
 
-    function makeSquadAndPlaceBetETH(uint256 _gameId, bytes32 _squadHash) public virtual payable returns(uint256) {
-        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
+    function _makeSquadAndPlaceBet(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain) internal virtual returns(uint256){
 
+        uint256 _remainingValue = msg.value;
+        if(_token == 0) _remainingValue = msg.value - _swapEthToUSDC();
+        else if(_token == 1) _remainingValue = msg.value - _swapLinkToUSDC(_amount);
+        else if(_token == 2) _transferUsdc(_amount);
+        else revert InvalidBetToken(_token);
+
+        gameToPrediction[_gameId][msg.sender] = Prediction(_squadHash, _amount, _token, _captain, _viceCaptain, false);
+        emit BetPlaced(_gameId,  msg.sender, gameToPrediction[_gameId][msg.sender]);
+
+        return _remainingValue;
+    }
+
+    function _makeSquadAndPlaceBetRandom(uint256 _gameId, bytes32 _squadHash,  uint256 _amount, uint8 _token) internal virtual returns(uint256){
+        
+        uint256 _remainingValue = msg.value;
+        if(_token == 0) _remainingValue = msg.value - _swapEthToUSDC();
+        else if(_token == 1) _remainingValue = msg.value - _swapLinkToUSDC(_amount);
+        else if(_token == 2) _transferUsdc(_amount);
+        else revert InvalidBetToken(_token);
+
+        gameToPrediction[_gameId][msg.sender] = Prediction(_squadHash, _amount, _token, 12, 12, true);
+
+        uint256 _randomnessPriceInNative=getRandomnessPriceInNative();
+        if(_randomnessPriceInNative>_remainingValue) revert InsufficientBetAmount(msg.sender, address(0), _randomnessPriceInNative, _remainingValue);
+        (uint256 _requestId, ) = _requestRandomness();
+        vrfRequests[_requestId] = VrfTracker(_gameId, msg.sender);
+        _remainingValue -= _randomnessPriceInNative;
+
+        return _remainingValue;
+    }
+
+    function _swapEthToUSDC() internal returns(uint256) {
         uint256 _betAmountInUSD=getValueInUSD(msg.value, 0);
 
-        // TODO: Swap ETH to USDC
+        // TODO: Swap ETH to USDC. and after swapping...
         if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, address(0), _betAmountInUSD, msg.value);
         
-        _makeSquad(_gameId, _squadHash, msg.sender, msg.value);
         // Return the total amount that was used for both the bet and the swap combined
         return msg.value;
     }
 
-
-    function makeSquadAndPlaceBetLINK(uint256 _gameId, bytes32 _squadHash, uint256 _betAmountInWei) public virtual payable returns(uint256) {
-        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
-
-        if(IERC20(linkToken).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, linkToken, _betAmountInWei);
-
+    function _swapLinkToUSDC(uint256 _betAmountInWei) internal returns(uint256) {
+        if(IERC20(LINK_TOKEN).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, LINK_TOKEN, _betAmountInWei);
+        
         uint256 _betAmountInUSD=getValueInUSD(_betAmountInWei, 1);
-
-        IERC20(linkToken).transferFrom(msg.sender, address(this), _betAmountInWei);
+        
+        IERC20(LINK_TOKEN).transferFrom(msg.sender, address(this), _betAmountInWei);
 
         // TODO: Swap LINK to USDC
 
-        if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, linkToken, _betAmountInUSD, _betAmountInWei);
+        if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, LINK_TOKEN, _betAmountInUSD, _betAmountInWei);
 
-        _makeSquad(_gameId, _squadHash, msg.sender, _betAmountInWei);
         // Return the total amount that was used for both the bet and the swap combined
         return _betAmountInWei;
     }
 
-    function makeSquadAndPlaceBetUSDC(uint256 _gameId, bytes32 _squadHash, uint256 _betAmountInWei) public virtual payable {
-        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
+    function  _transferUsdc(uint256 _betAmountInWei) internal {
+        if(IERC20(USDC_TOKEN).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, USDC_TOKEN, _betAmountInWei);
+        
+        IERC20(USDC_TOKEN).transferFrom(msg.sender, address(this), _betAmountInWei);
 
-        if(IERC20(usdcToken).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, usdcToken, _betAmountInWei);
-
-        IERC20(usdcToken).transferFrom(msg.sender, address(this), _betAmountInWei);
-
-        if(_betAmountInWei < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(msg.sender, usdcToken, _betAmountInWei, _betAmountInWei);
-
-        _makeSquad(_gameId, _squadHash, msg.sender, _betAmountInWei);
+        if(_betAmountInWei < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(msg.sender, USDC_TOKEN, _betAmountInWei, _betAmountInWei);
     }
 
+
+    function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal override{
+        VrfTracker memory _game = vrfRequests[_requestId];
+        uint256 _randomWord=_randomWords[0];
+        gameToPrediction[_game.gameId][_game.player].captain = uint8(_randomWord % 11);
+        _randomWord = _randomWord / 11;
+        gameToPrediction[_game.gameId][_game.player].viceCaptain = uint8(_randomWord % 11);
+        emit BetPlaced(_game.gameId, _game.player, gameToPrediction[_game.gameId][_game.player]);
+    }
 
     function _ccipReceive(
         Client.Any2EVMMessage memory any2EvmMessage
@@ -99,20 +142,16 @@ abstract contract Predictions is PriceFeeds, CCIPReceiver, ConfirmedOwner{
         ) 
     {
         (uint256 gameId, address player, bytes32 squadHash) = abi.decode(any2EvmMessage.data, (uint256, address, bytes32));
-        if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(msg.sender, usdcToken, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
+        if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(msg.sender, USDC_TOKEN, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
 
-        _makeSquad(gameId, squadHash, player, any2EvmMessage.destTokenAmounts[0].amount);
+        // _makeSquad(gameId, squadHash, player, any2EvmMessage.destTokenAmounts[0].amount);
         emit CrosschainReceived(any2EvmMessage.messageId);
-    }
-
-    function _makeSquad(uint256 _gameId, bytes32 _squadHash, address player, uint256 amount) internal {
-        gameToSquadHash[_gameId][player] = _squadHash;
-        emit BetPlaced(_gameId, _squadHash, player, amount);
     }
 
     function setBetAmountInUSDC(uint256 _amount) external onlyOwner {
         BET_AMOUNT_IN_WEI = _amount;
         emit BetAmountSet(_amount);
     }
+
 
 }

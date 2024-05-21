@@ -7,13 +7,9 @@ import "../interface/ILogAutomation.sol";
 
 abstract contract Automation is ILogAutomation, ConfirmedOwner{
     
-    IKeeperRegistryMaster public automationRegistry;
+    IKeeperRegistryMaster public automationRegistry=IKeeperRegistryMaster(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984);
+    
     uint256[2] public upKeepIds; // 0 - Time Trigger, 1 - Log Trigger
-
-    constructor(address _automationRegistry) 
-    {
-        automationRegistry=IKeeperRegistryMaster(_automationRegistry); 
-    }
 
     function setUpKeepIds(uint256[2] memory _upKeepIds) external onlyOwner{
         upKeepIds=_upKeepIds;

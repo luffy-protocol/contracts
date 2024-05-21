@@ -19,7 +19,6 @@ abstract contract PointsCompute is FunctionsClient, ILogAutomation {
 
     
     bytes32 public donId;
-    address public functionsRouter;
     string public sourceCode;
     bytes32 public latestRequestId;
     bytes public latestResponse;
@@ -29,9 +28,11 @@ abstract contract PointsCompute is FunctionsClient, ILogAutomation {
     mapping(bytes32=>uint256) public requestToGameId;
     mapping(uint256=>Results) public results;
 
-    constructor(address _functionsRouter, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId) FunctionsClient(_functionsRouter)
+    address public constant FUNCTIONS_ROUTER=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+
+
+    constructor(string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId) FunctionsClient(FUNCTIONS_ROUTER)
     {
-        functionsRouter=_functionsRouter;
         sourceCode=_sourceCode;
         functionsSubscriptionId=_subscriptionId;
         donId=_donId;

@@ -41,31 +41,33 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
 
+    error SelectSquadDisabled(uint256 gameId);
     error InvalidAutomationCaller(address caller);
     error ClaimWindowComplete(uint256 currentTimestamp, uint256 deadline);
     error ClaimWindowInComplete(uint256 currentTimestamp, uint256 deadline);
     error PanicClaimError();
 
-
+    mapping(uint256=>string) public playerIdRemappings;
     mapping(address=>uint256) public claimmables;
     mapping(uint256=>mapping(address=>uint256)) public rankings;
     mapping(uint256=>mapping(address=>uint256)) public winnings;
 
+    // MOVE All variables to different places
+
+    address public constant CCIP_ROUTER=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    address public constant FUNCTIONS_ROUTER=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    address public constant USDC_TOKEN=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    address public constant LINK_TOKEN=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    address public constant VRF_WRAPPER=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    AggregatorV3Interface[2] public PRICE_FEEDS;
+
     struct ConstuctorParams{
-        address ccipRouter;
-        address functionsRouter;
-        address usdcToken;
-        address linkToken;
-        address automationRegistry;
-        AggregatorV3Interface[2] priceFeeds;
         string sourceCode;
         uint64 subscriptionId;
         bytes32 donId;
-
     }
 
-
-    constructor(ConstuctorParams memory _params) Automation(_params.automationRegistry) PointsCompute(_params.functionsRouter,_params.sourceCode,_params.subscriptionId,_params.donId) Predictions(_params.ccipRouter, _params.usdcToken, _params.linkToken, _params.priceFeeds) {}
+    constructor(ConstuctorParams memory _params) PointsCompute(_params.sourceCode,_params.subscriptionId,_params.donId) ConfirmedOwner(msg.sender) {}
 
     modifier onlyOwnerOrAutomation(uint8 _automation){
         address forwarderAddress=getForwarderAddress(_automation);
@@ -91,6 +93,16 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit GamePlayerIdRemappingSet(_gameId, _remapping);
     }
 
+    function makeSquadAndPlaceBet(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain) external {
+        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
+        _makeSquadAndPlaceBet(_gameId, _squadHash, _amount, _token, _captain, _viceCaptain);
+    }
+
+    function makeSquadAndPlaceBetRandom(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token) external {
+        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
+        _makeSquadAndPlaceBetRandom(_gameId, _squadHash, _amount, _token);
+    }
+
     function triggerFetchResults(uint256 gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwnerOrAutomation(0) {
         _triggerCompute(gameId,playerIdRemappings[gameId], donHostedSecretsSlotID, donHostedSecretsVersion);
     }
@@ -114,7 +126,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     function claimPoints(uint256 _gameId, bytes32 _playerIds, uint256 _totalPoints, bytes memory _proof) external {
         if(block.timestamp > results[_gameId].publishedTimestamp + 2 days) revert ClaimWindowComplete(block.timestamp, results[_gameId].publishedTimestamp + 2 days);
         bytes32[] memory _publicInputs=new bytes32[](2);
-        _publicInputs[0]=gameToSquadHash[_gameId][msg.sender];
+        _publicInputs[0]=gameToPrediction[_gameId][msg.sender].squadHash;
         _publicInputs[1]=bytes32(_totalPoints);
         // _publicInputs[2]=playerIds;
         _verifyProof(_proof, _publicInputs);
@@ -123,7 +135,6 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
 
     function claimRewards(uint256 _gameId, address _player, uint256 _amountInWei, uint256 _position) public onlyOwner{
         if(block.timestamp < results[_gameId].publishedTimestamp + 2 days) revert ClaimWindowInComplete(block.timestamp, results[_gameId].publishedTimestamp + 2 days);
-        // Implement Logic that sets money to claimmables and position in leaderboard
 
         claimmables[_player]+=_amountInWei;
         rankings[_gameId][_player]=_position;
@@ -137,10 +148,10 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     }
 
     function _withdrawRewards() internal{
-        if(IERC20(usdcToken).balanceOf(address(this))<claimmables[msg.sender]) revert PanicClaimError();
+        if(IERC20(USDC_TOKEN).balanceOf(address(this))<claimmables[msg.sender]) revert PanicClaimError();
         uint256 value=claimmables[msg.sender];
         claimmables[msg.sender]=0;
-        IERC20(usdcToken).transferFrom(address(this), msg.sender, value);
+        IERC20(USDC_TOKEN).transferFrom(address(this), msg.sender, value);
         emit RewardsWithdrawn(msg.sender, value);
     }
 
@@ -158,8 +169,8 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     // 5. Claim rewards on chain
     // 6. Withdraw rewards on chain
 
-    function zmakeSquadTest(uint256 _gameId, bytes32 _squadHash, address _player, uint256 _amount) external {
-        emit BetPlaced(_gameId, _squadHash, _player, _amount);
+    function zmakeSquadTest(uint256 _gameId, address _player, Prediction memory _prediction) external {
+        emit BetPlaced(_gameId, _player, _prediction);
     }
 
     function zpostResultsTest(bytes32 _requestId, uint256 _gameId, bytes32 _merkleRoot, string memory _pointsIpfsHash) external{
@@ -181,6 +192,5 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     function zsetPlayerIdRemmapings(uint256 _gameId, string memory _remapping) external  {
         emit GamePlayerIdRemappingSet(_gameId, _remapping);
     }
-
 
 }

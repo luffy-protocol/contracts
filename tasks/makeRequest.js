@@ -22,7 +22,7 @@ task(
   "Makes a request to the Oracle function in the contract"
 ).setAction(async (taskArgs) => {
   const luffyOracleAddress = "0x497f5b0aE3873604ac303582b13B66d14D520E7B"; // REPLACE this with your Functions consumer address
-  const linkTokenAddress = "0x779877A7B0D9E8603169DdbD7836e478b4624789";
+  const LINK_TOKENAddress = "0x779877A7B0D9E8603169DdbD7836e478b4624789";
   const subscriptionId = 2435; // REPLACE this with your subscription ID
   const donId = "fun-ethereum-sepolia-1";
   const routerAddress = "0xb83E47C2bC239B3bf370bc41e1459A34b41238D0";
@@ -63,7 +63,7 @@ task(
   // Initialize and return SubscriptionManager
   const subscriptionManager = new SubscriptionManager({
     signer: signer,
-    linkTokenAddress: linkTokenAddress,
+    LINK_TOKENAddress: LINK_TOKENAddress,
     functionsRouterAddress: routerAddress,
   });
   await subscriptionManager.initialize();
