@@ -79,7 +79,7 @@ contract LuffyCrosschain is Predictions{
             memory tokenAmounts = new Client.EVMTokenAmount[](1);
         tokenAmounts[0] = Client.EVMTokenAmount({
             token: USDC_TOKEN,
-            amount: BET_AMOUNT_IN_WEI
+            amount: BET_AMOUNT_IN_USDC
         });
         return
             Client.EVM2AnyMessage({

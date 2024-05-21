@@ -87,13 +87,13 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit GamePlayerIdRemappingSet(_gameId, _remapping);
     }
 
-    function makeSquadAndPlaceBet(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain) external {
-        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
+    function makeSquadAndPlaceBet(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain) external payable{
+        if(bytes(playerIdRemappings[_gameId]).length == 0) revert SelectSquadDisabled(_gameId);
         _makeSquadAndPlaceBet(_gameId, _squadHash, _amount, _token, _captain, _viceCaptain);
     }
 
-    function makeSquadAndPlaceBetRandom(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token) external {
-        if(bytes(playerIdRemappings[_gameId]).length>0) revert SelectSquadDisabled(_gameId);
+    function makeSquadAndPlaceBetRandom(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token) external payable{
+        if(bytes(playerIdRemappings[_gameId]).length == 0) revert SelectSquadDisabled(_gameId);
         _makeSquadAndPlaceBetRandom(_gameId, _squadHash, _amount, _token);
     }
 

@@ -16,6 +16,10 @@ abstract contract Randomness is VRFV2PlusWrapperConsumerBase, ConfirmedOwner{
         VRF_WRAPPER = IVRFV2PlusWrapper(_vrfWrapper);  
     }
 
+    function request() payable external returns(uint256, uint256){
+        return _requestRandomness();
+    }
+
     function _requestRandomness() internal returns (uint256,uint256) {
         bytes memory extraArgs = VRFV2PlusClient._argsToBytes(
             VRFV2PlusClient.ExtraArgsV1({nativePayment: true})

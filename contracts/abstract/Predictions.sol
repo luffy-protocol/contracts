@@ -29,7 +29,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
         address player;
     }
 
-    uint256 public BET_AMOUNT_IN_WEI = 1 * 10 ** 15;
+    uint256 public BET_AMOUNT_IN_USDC = 1 * 10 ** 5; // 6 decimals // 0.1 USDC
     mapping(uint256=>VrfTracker) public vrfRequests;
     mapping(uint256=>mapping(address=>Prediction)) public gameToPrediction;
     mapping(uint64=>address) public crosschainAddresses;
@@ -92,7 +92,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
         uint256 _betAmountInUSD=getValueInUSD(msg.value, 0);
 
         // TODO: Swap ETH to USDC. and after swapping...
-        if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, 0, _betAmountInUSD, msg.value);
+        if(_betAmountInUSD < BET_AMOUNT_IN_USDC / 10 ** 8) revert InsufficientBetAmount(msg.sender, 0, _betAmountInUSD, msg.value);
         
         // Return the total amount that was used for both the bet and the swap combined
         return msg.value;
@@ -107,7 +107,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
 
         // TODO: Swap LINK to USDC
 
-        if(_betAmountInUSD < BET_AMOUNT_IN_WEI / 10 ** 8) revert InsufficientBetAmount(msg.sender, 1, _betAmountInUSD, _betAmountInWei);
+        if(_betAmountInUSD < BET_AMOUNT_IN_USDC / 10 ** 8) revert InsufficientBetAmount(msg.sender, 1, _betAmountInUSD, _betAmountInWei);
 
         // Return the total amount that was used for both the bet and the swap combined
         return _betAmountInWei;
@@ -118,7 +118,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
         
         IERC20(USDC_TOKEN).transferFrom(msg.sender, address(this), _betAmountInWei);
 
-        if(_betAmountInWei < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(msg.sender, 2, _betAmountInWei, _betAmountInWei);
+        if(_betAmountInWei < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(msg.sender, 2, _betAmountInWei, _betAmountInWei);
     }
 
 
@@ -142,7 +142,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
         ) 
     {
         (uint256 gameId, address player, bytes32 squadHash, uint8 token, uint8 captain, uint8 viceCaptain, bool isRandom) = abi.decode(any2EvmMessage.data, (uint256, address, bytes32, uint8, uint8, uint8, bool));
-        if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_WEI) revert InsufficientBetAmount(player, token, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
+        if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(player, token, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
 
         gameToPrediction[gameId][player] = Prediction(squadHash, any2EvmMessage.destTokenAmounts[0].amount, token, captain, viceCaptain, isRandom);
         emit CrosschainReceived(any2EvmMessage.messageId);
@@ -150,7 +150,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
     }
 
     function setBetAmountInUSDC(uint256 _amount) external onlyOwner {
-        BET_AMOUNT_IN_WEI = _amount;
+        BET_AMOUNT_IN_USDC = _amount;
         emit BetAmountSet(_amount);
     }
 
