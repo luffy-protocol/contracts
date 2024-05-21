@@ -14,26 +14,38 @@ task("deploy-crosschain", "Deploys the LuffyCrosschain contract")
     console.log("\n__Compiling Contracts__");
     await run("compile");
 
-    const protocolContractFactory = await ethers.getContractFactory(
+    const crosschainContractFactory = await ethers.getContractFactory(
       "LuffyCrosschain"
     );
-    const protocolContract = await protocolContractFactory.deploy();
+
+    const args = [
+      networks[network.name].protocolAddress,
+      networks[network.name].vrfWrapper,
+      networks[network.name].ccipRouter,
+      networks[network.name].usdcToken,
+      networks[network.name].linkToken,
+      [
+        networks[network.name].ethToUsdPriceFeed,
+        networks[network.name].linkToUsdPriceFeed,
+      ],
+    ];
+    const crosschainContract = await crosschainContractFactory.deploy(...args);
 
     console.log(
       `\nWaiting ${
         networks[network.name].confirmations
       } blocks for transaction ${
-        protocolContract.deployTransaction.hash
+        crosschainContract.deployTransaction.hash
       } to be confirmed...`
     );
 
-    await protocolContract.deployTransaction.wait(
+    await crosschainContract.deployTransaction.wait(
       networks[network.name].confirmations
     );
 
     console.log(
       "\nDeployed LuffyCrosschain contract to:",
-      protocolContract.address
+      crosschainContract.address
     );
 
     if (network.name === "localFunctionsTestnet") {
@@ -50,8 +62,8 @@ task("deploy-crosschain", "Deploys the LuffyCrosschain contract")
       try {
         console.log("\nVerifying contract...");
         await run("verify:verify", {
-          address: protocolContract.address,
-          constructorArguments: [],
+          address: crosschainContract.address,
+          constructorArguments: args,
         });
         console.log("Contract verified");
       } catch (error) {
@@ -71,6 +83,6 @@ task("deploy-crosschain", "Deploys the LuffyCrosschain contract")
     }
 
     console.log(
-      `\n LuffyCrosschain contract deployed to ${protocolContract.address} on ${network.name}`
+      `\n LuffyCrosschain contract deployed to ${crosschainContract.address} on ${network.name}`
     );
   });
