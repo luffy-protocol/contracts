@@ -11,9 +11,7 @@ abstract contract Randomness is VRFV2PlusWrapperConsumerBase, ConfirmedOwner{
     uint32 public numWords = 1;
     uint32 public vrfCallbackGasLimit = 400_000;
 
-    address public constant VRF_V2_PLUS_WRAPPER=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
-
-    constructor() VRFV2PlusWrapperConsumerBase(VRF_V2_PLUS_WRAPPER){}
+    constructor(address _vrfWrapper) VRFV2PlusWrapperConsumerBase(_vrfWrapper){}
 
      function _requestRandomness() internal returns (uint256,uint256) {
        return requestRandomnessPayInNative(vrfCallbackGasLimit, requestConfirmations, numWords, "");

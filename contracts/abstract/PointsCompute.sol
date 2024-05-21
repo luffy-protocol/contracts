@@ -18,24 +18,22 @@ abstract contract PointsCompute is FunctionsClient, ILogAutomation {
     }
 
     
-    bytes32 public donId;
+    bytes32 public constant DON_ID=0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000;
+    uint64 public constant SUBSCRIPTION_ID=8378;
+
     string public sourceCode;
     bytes32 public latestRequestId;
     bytes public latestResponse;
     bytes public latestError;
     uint32 public oracleCallbackGasLimit = 300000;
-    uint64 public functionsSubscriptionId;
     mapping(bytes32=>uint256) public requestToGameId;
     mapping(uint256=>Results) public results;
 
-    address public constant FUNCTIONS_ROUTER=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    address public constant FUNCTIONS_ROUTER=0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0; // AvalancheFuji Chainlink Functions Router
 
-
-    constructor(string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId) FunctionsClient(FUNCTIONS_ROUTER)
+    constructor(string memory _sourceCode) FunctionsClient(FUNCTIONS_ROUTER)
     {
         sourceCode=_sourceCode;
-        functionsSubscriptionId=_subscriptionId;
-        donId=_donId;
     }
 
     event OracleResponseSuccess(bytes32 requestId, bytes response);
@@ -57,9 +55,9 @@ abstract contract PointsCompute is FunctionsClient, ILogAutomation {
         if (args.length > 0) req.setArgs(args);
         latestRequestId = _sendRequest(
             req.encodeCBOR(),
-            functionsSubscriptionId,
+            SUBSCRIPTION_ID,
             oracleCallbackGasLimit,
-            donId
+            DON_ID
         );
         emit OracleRequestSent(latestRequestId, gameId);
         requestToGameId[latestRequestId]=gameId;

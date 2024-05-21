@@ -18,7 +18,7 @@ contract LuffyCrosschain is Predictions{
     mapping(address=>uint256) public valueBalance;
 
 
-    constructor(address _protocolAddress) ConfirmedOwner(msg.sender){
+    constructor(address _protocolAddress, address _vrfWrapper, address _ccipRouter, address _usdcToken, address _linkToken, AggregatorV3Interface[2] memory _priceFeeds) Predictions( _vrfWrapper,  _ccipRouter,  _usdcToken,  _linkToken, _priceFeeds) ConfirmedOwner(msg.sender) {
         protocolAddress=_protocolAddress;
     }
 

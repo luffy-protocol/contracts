@@ -52,7 +52,17 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     mapping(uint256=>mapping(address=>uint256)) public rankings;
     mapping(uint256=>mapping(address=>uint256)) public winnings;
 
-    constructor(string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId) PointsCompute(_sourceCode,_subscriptionId,_donId) ConfirmedOwner(msg.sender) {}
+    struct ConstructorParams{
+        string sourceCode;
+        address vrfWrapper;
+        address ccipRouter;
+        address usdcToken;
+        address linkToken;
+        AggregatorV3Interface[2] priceFeeds;
+    }
+
+ 
+    constructor(ConstructorParams memory _params) Predictions( _params.vrfWrapper,  _params.ccipRouter,  _params.usdcToken,  _params.linkToken, _params.priceFeeds) PointsCompute(_params.sourceCode) ConfirmedOwner(msg.sender) {}
 
     modifier onlyOwnerOrAutomation(uint8 _automation){
         address forwarderAddress=getForwarderAddress(_automation);

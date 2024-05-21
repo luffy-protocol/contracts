@@ -34,11 +34,13 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
     mapping(uint256=>mapping(address=>Prediction)) public gameToPrediction;
     mapping(uint64=>address) public crosschainAddresses;
 
-    address public constant CCIP_ROUTER=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
-    address public constant USDC_TOKEN=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
-    address public constant LINK_TOKEN=0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    address public immutable USDC_TOKEN;
+    address public immutable LINK_TOKEN;
 
-    constructor() CCIPReceiver(CCIP_ROUTER)   {}
+    constructor(address _vrfWrapper, address _ccipRouter, address _usdcToken, address _linkToken, AggregatorV3Interface[2] memory _priceFeeds) CCIPReceiver(_ccipRouter) PriceFeeds(_priceFeeds[0], _priceFeeds[1]) Randomness(_vrfWrapper) {
+        USDC_TOKEN=_usdcToken;
+        LINK_TOKEN=_linkToken;
+    }
 
     modifier onlyAllowlisted(uint64 _selector, address _caller){
         if(crosschainAddresses[_selector]!=_caller) revert InvalidCrosschainCaller(_caller);
