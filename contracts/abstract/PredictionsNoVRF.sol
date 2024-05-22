@@ -13,7 +13,7 @@ error InsufficientBetAmount(address sender, uint8 token, uint256 betInUSD, uint2
 error InsufficientAllowance(address sender, address token, uint256 amountInWei);
 error InvalidCrosschainCaller(address caller);
 
-abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
+abstract contract PredictionsNoVRF is PriceFeeds, CCIPReceiver, ConfirmedOwner{
 
     struct Prediction{
         bytes32 squadHash;
@@ -37,7 +37,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
     address public immutable USDC_TOKEN;
     address public immutable LINK_TOKEN;
 
-    constructor(address _vrfWrapper, address _ccipRouter, address _usdcToken, address _linkToken, AggregatorV3Interface[2] memory _priceFeeds) CCIPReceiver(_ccipRouter) PriceFeeds(_priceFeeds[0], _priceFeeds[1]) Randomness(_vrfWrapper) {
+    constructor(address _ccipRouter, address _usdcToken, address _linkToken, AggregatorV3Interface[2] memory _priceFeeds) CCIPReceiver(_ccipRouter) PriceFeeds(_priceFeeds[0], _priceFeeds[1])  {
         USDC_TOKEN=_usdcToken;
         LINK_TOKEN=_linkToken;
     }
@@ -67,23 +67,6 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
 
         gameToPrediction[_gameId][msg.sender] = Prediction(_squadHash, _amount, _token, _captain, _viceCaptain, false);
         emit BetPlaced(_gameId,  msg.sender, gameToPrediction[_gameId][msg.sender]);
-
-        return _remainingValue;
-    }
-
-    function _makeSquadAndPlaceBetRandom(uint256 _gameId, bytes32 _squadHash,  uint256 _amount, uint8 _token) internal virtual returns(uint256){
-        
-        uint256 _remainingValue = msg.value;
-        if(_token == 0) _remainingValue = msg.value - _swapEthToUSDC();
-        else if(_token == 1) _remainingValue = msg.value - _swapLinkToUSDC(_amount);
-        else if(_token == 2) _transferUsdc(_amount);
-        else revert InvalidBetToken(_token);
-
-        gameToPrediction[_gameId][msg.sender] = Prediction(_squadHash, _amount, _token, 12, 12, true);
-
-        (uint256 _requestId, uint256 _requestPrice) = _requestRandomness();
-        _remainingValue = _remainingValue - _requestPrice;
-        vrfRequests[_requestId] = VrfTracker(_gameId, msg.sender);
 
         return _remainingValue;
     }
@@ -120,18 +103,6 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
 
         if(_betAmountInWei < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(msg.sender, 2, _betAmountInWei, _betAmountInWei);
     }
-
-
-    function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal virtual override{
-        VrfTracker memory _game = vrfRequests[_requestId];
-        uint256 _randomWord=_randomWords[0];
-        gameToPrediction[_game.gameId][_game.player].captain = uint8(_randomWord % 11);
-        _randomWord = _randomWord / 100;
-        gameToPrediction[_game.gameId][_game.player].viceCaptain = uint8(_randomWord % 11);
-        emit BetPlaced(_game.gameId, _game.player, gameToPrediction[_game.gameId][_game.player]);
-    }
-
-
 
     function setBetAmountInUSDC(uint256 _amount) external onlyOwner {
         BET_AMOUNT_IN_USDC = _amount;
