@@ -46,7 +46,7 @@ contract LuffyCrosschain is Predictions{
 
         emit BetPlaced(_game.gameId, _game.player, gameToPrediction[_game.gameId][_game.player]);
         
-        bytes memory _data=abi.encode(_game.gameId, _game.player, _prediction.squadHash, _prediction.token, _prediction.captain, _prediction.viceCaptain, true);
+        bytes memory _data=abi.encode(_game.gameId, _game.player, block.timestamp, _prediction.squadHash, _prediction.token, _prediction.captain, _prediction.viceCaptain, true);
 
         _sendMessagePayNative(valueBalance[_game.player], _data);
         
@@ -64,7 +64,7 @@ contract LuffyCrosschain is Predictions{
 
         IERC20(USDC_TOKEN).approve(address(router), _fee);
 
-        messageId = router.ccipSend{value: fees}(
+        messageId = router.ccipSend{value: _fee}(
             DESTINATION_CHAIN_SELECTOR,
             evm2AnyMessage
         );

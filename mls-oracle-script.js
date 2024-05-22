@@ -1,20 +1,13 @@
-const {
-  keccak256,
-  encodePacked,
-  encodeAbiParameters,
-  parseAbiParameters,
-  hexToBytes,
-} = await import("npm:viem");
-
 const matchId = args[0];
 const playerIdsRemmaping = args[1];
 
 if (secrets.pinataKey == "") {
   throw Error("PINATA_API_KEY environment variable not set for Pinata API.");
 }
-// if (secrets.cricBuzzKey == "") {
-//   throw Error("CRICKET_API_KEY environment variable not set for Cricbuzz API.");
-// }
+
+if (secrets.mlsApiKey == "") {
+  throw Error("MLS_API_KEY environment variable not set for Rapid API.");
+}
 
 const pointsScheme = {
   minutes: 0.2,
@@ -92,36 +85,6 @@ function calculateFantasyPoints(playerStats) {
   return fantasyPoints;
 }
 
-function computeMerkleRoot(points) {
-  const hexValues = points.map((point) =>
-    keccak256(`0x${point.toString(16).padStart(64, "0")}`)
-  );
-
-  function recursiveMerkleRoot(hashes) {
-    if (hashes.length === 1) {
-      return hashes[0];
-    }
-
-    const nextLevelHashes = [];
-
-    // Combine adjacent hashes and hash them together
-    for (let i = 0; i < hashes.length; i += 2) {
-      const left = hashes[i];
-      const right = i + 1 < hashes.length ? hashes[i + 1] : "0x";
-      const combinedHash = keccak256(
-        encodePacked(["bytes32", "bytes32"], [left, right])
-      );
-      nextLevelHashes.push(combinedHash);
-    }
-
-    // Recur for the next level
-    return recursiveMerkleRoot(nextLevelHashes);
-  }
-
-  // Start the recursive computation
-  return recursiveMerkleRoot(hexValues);
-}
-
 function padArrayWithZeros(array) {
   const paddedLength = Math.pow(2, Math.ceil(Math.log2(array.length)));
   return array.concat(
@@ -143,31 +106,40 @@ const playerPerformanceRequest = Functions.makeHttpRequest({
     matchId,
   method: "GET",
   headers: {
-    "X-RapidAPI-Key": "d77878f019mshb86b56759562ea1p13048ejsneda9faebabc4",
+    "X-RapidAPI-Key": secrets.mlsApiKey,
     "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
   },
 });
 
 const [playerPerformanceResponse, playerIdsRemmapingResponse] =
   await Promise.all([playerPerformanceRequest, playerIdsRemmapingRequest]);
-let points = new Array(64).fill(0.0);
+let points = new Array(64).fill(0);
+
+console.log("Player Performance Response");
+console.log(playerPerformanceResponse.data);
+console.log("Player Ids Remmaping Response");
+console.log(playerIdsRemmapingResponse.data);
 
 if (!playerPerformanceResponse.error || playerIdsRemmapingResponse.error) {
-  console.log("Player performance API success");
-
   //process home Team
   playerPerformanceResponse.data.response[0].players.forEach((player) => {
     const point = calculateFantasyPoints(player.statistics[0]);
     const playerId = player.player.id;
-    points[playerIdsRemmapingResponse.data[playerId]] = point;
+    points[playerIdsRemmapingResponse.data[playerId]] = Math.ceil(
+      point < 0 ? 0 : point
+    );
   });
   // Process bowlers data
   playerPerformanceResponse.data.response[1].players.forEach((player) => {
     const point = calculateFantasyPoints(player.statistics[0]);
     const playerId = player.player.id;
-    points[playerIdsRemmapingResponse.data[playerId]] = point;
+    points[playerIdsRemmapingResponse.data[playerId]] = Math.ceil(
+      point < 0 ? 0 : point
+    );
   });
 }
+
+console.log("Fantasy points: ", points);
 
 const pinFileToPinataRequest = Functions.makeHttpRequest({
   url: `https://api.pinata.cloud/pinning/pinJSONToIPFS`,
@@ -178,7 +150,7 @@ const pinFileToPinataRequest = Functions.makeHttpRequest({
   },
   data: {
     pinataMetadata: {
-      name: "Gameweeek " + matchId,
+      name: "Gmae " + matchId,
     },
     pinataOptions: {
       cidVersion: 1,
@@ -189,18 +161,44 @@ const pinFileToPinataRequest = Functions.makeHttpRequest({
   },
 });
 
-const [pinFileToPinataResponse] = await Promise.all([pinFileToPinataRequest]);
+const computeMerkleRootRequest = Functions.makeHttpRequest({
+  url: "https://luffyprotocol.adaptable.app/api/compute-merkle-root",
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${secrets.pinataKey}`,
+    "Content-Type": "application/json",
+  },
+  data: {
+    points: points,
+  },
+});
 
-const merkleRoot = computeMerkleRoot(padArrayWithZeros(points));
+const [pinFileToPinataResponse, computeMerkleRootResponse] = await Promise.all([
+  pinFileToPinataRequest,
+  computeMerkleRootRequest,
+]);
+const ipfsHash = pinFileToPinataResponse.data.IpfsHash;
+const merkleRoot = computeMerkleRootResponse.data.merkleRoot;
 
-console.log(merkleRoot);
-const returnDataHex = encodeAbiParameters(
-  parseAbiParameters("bytes32, string"),
-  [merkleRoot, pinFileToPinataResponse.data.IpfsHash]
-);
-console.log(merkleRoot);
-console.log(
-  `https://amethyst-impossible-ptarmigan-368.mypinata.cloud/ipfs/${pinFileToPinataResponse.data.IpfsHash}?pinataGatewayToken=CUMCxB7dqGB8wEEQqGSGd9u1edmJpWmR9b0Oiuewyt5gs633nKmTogRoKZMrG4Vk`
-);
+console.log("COMPUTE MERKLE ROOT RESPONSE");
+console.log(computeMerkleRootResponse.data);
 
-return hexToBytes(returnDataHex);
+const encodeReturnDataRequest = Functions.makeHttpRequest({
+  url: "https://luffyprotocol.adaptable.app/api/encode-return-data",
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${secrets.pinataKey}`,
+    "Content-Type": "application/json",
+  },
+  data: {
+    ipfsHash: ipfsHash,
+    merkleRoot: merkleRoot,
+  },
+});
+
+const [encodeReturnDataResponse] = await Promise.all([encodeReturnDataRequest]);
+
+console.log("ENCODE RETURN DATA RESPONSE");
+console.log(encodeReturnDataResponse.data);
+
+return encodeReturnDataResponse.data.returnData;

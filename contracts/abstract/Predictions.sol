@@ -141,6 +141,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
             abi.decode(any2EvmMessage.sender, (address))
         ) 
     {
+        // 
         (uint256 gameId, address player, bytes32 squadHash, uint8 token, uint8 captain, uint8 viceCaptain, bool isRandom) = abi.decode(any2EvmMessage.data, (uint256, address, bytes32, uint8, uint8, uint8, bool));
         if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(player, token, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
 
