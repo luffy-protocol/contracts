@@ -41,13 +41,21 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
 
+
+    struct Game{
+        uint256 gameId;
+        string remapping;
+        uint256 startsIn;
+        bool exists;
+    }
+
     error SelectSquadDisabled(uint256 gameId);
     error InvalidAutomationCaller(address caller);
     error ClaimWindowComplete(uint256 currentTimestamp, uint256 deadline);
     error ClaimWindowInComplete(uint256 currentTimestamp, uint256 deadline);
     error PanicClaimError();
 
-    mapping(uint256=>string) public playerIdRemappings;
+    mapping(uint256=>Game) public games;
     mapping(address=>uint256) public claimmables;
     mapping(uint256=>mapping(address=>uint256)) public rankings;
     mapping(uint256=>mapping(address=>uint256)) public winnings;
@@ -80,25 +88,44 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     event PointsClaimed(uint256 gameid, address claimer, bytes32 playerIds, uint256 totalPoints);
     event RewardsClaimed(uint256 gameId, address claimer, uint256 value, uint256 position);
     event RewardsWithdrawn(address claimer, uint256 value);
-    event GamePlayerIdRemappingSet(uint256 gameId, string remapping);
+    event GamePlayerIdRemappingSet(uint256 gameId, uint256 _startsIn, string remapping);
 
-    function setPlayerIdRemmapings(uint256 _gameId, string memory _remapping) external onlyOwner {
-        playerIdRemappings[_gameId] = _remapping;
-        emit GamePlayerIdRemappingSet(_gameId, _remapping);
+    function setPlayerIdRemmapings(uint256 _gameId, uint256 _startsIn, string memory _remapping) external onlyOwner {
+        games[_gameId] = Game(_gameId, _remapping, _startsIn, true);
+        emit GamePlayerIdRemappingSet(_gameId, _startsIn, _remapping);
     }
 
     function makeSquadAndPlaceBet(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain) external payable{
-        if(bytes(playerIdRemappings[_gameId]).length == 0) revert SelectSquadDisabled(_gameId);
+        if(!games[_gameId].exists) revert SelectSquadDisabled(_gameId);
         _makeSquadAndPlaceBet(_gameId, _squadHash, _amount, _token, _captain, _viceCaptain);
     }
 
     function makeSquadAndPlaceBetRandom(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token) external payable{
-        if(bytes(playerIdRemappings[_gameId]).length == 0) revert SelectSquadDisabled(_gameId);
+        if(!games[_gameId].exists) revert SelectSquadDisabled(_gameId);
         _makeSquadAndPlaceBetRandom(_gameId, _squadHash, _amount, _token);
     }
 
+    function _ccipReceive(
+        Client.Any2EVMMessage memory any2EvmMessage
+    )
+        internal
+        override
+        onlyAllowlisted(
+            any2EvmMessage.sourceChainSelector,
+            abi.decode(any2EvmMessage.sender, (address))
+        ) 
+    {
+        (uint256 gameId, address player, bytes32 squadHash, uint8 token, uint8 captain, uint8 viceCaptain, bool isRandom) = abi.decode(any2EvmMessage.data, (uint256, address, bytes32, uint8, uint8, uint8, bool));
+        if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(player, token, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
+        if(!games[gameId].exists) revert SelectSquadDisabled(gameId);
+
+        gameToPrediction[gameId][player] = Prediction(squadHash, any2EvmMessage.destTokenAmounts[0].amount, token, captain, viceCaptain, isRandom);
+        emit CrosschainReceived(any2EvmMessage.messageId);
+        emit BetPlaced(gameId,  player, gameToPrediction[gameId][player]);
+    }
+
     function triggerFetchResults(uint256 gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwnerOrAutomation(0) {
-        _triggerCompute(gameId,playerIdRemappings[gameId], donHostedSecretsSlotID, donHostedSecretsVersion);
+        _triggerCompute(gameId, games[gameId].remapping, donHostedSecretsSlotID, donHostedSecretsVersion);
     }
 
     function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
@@ -183,8 +210,8 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit RewardsWithdrawn(_claimer, _amount);
     }
 
-    function zsetPlayerIdRemmapings(uint256 _gameId, string memory _remapping) external  {
-        emit GamePlayerIdRemappingSet(_gameId, _remapping);
+    function zsetPlayerIdRemmapings(uint256 _gameId, uint256 _startsIn, string memory _remapping) external  {
+        emit GamePlayerIdRemappingSet(_gameId, _startsIn, _remapping);
     }
 
 }

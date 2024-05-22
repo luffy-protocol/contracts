@@ -92,6 +92,13 @@ contract LuffyCrosschain is Predictions{
                 feeToken: address(0)
             });
     }
+    
+    function _ccipReceive(
+        Client.Any2EVMMessage memory any2EvmMessage
+    )
+        internal
+        override
+    {}
 
     function setProtocolAddress(address _protocolAddress) external onlyOwner{
         protocolAddress=_protocolAddress;

@@ -131,24 +131,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
         emit BetPlaced(_game.gameId, _game.player, gameToPrediction[_game.gameId][_game.player]);
     }
 
-    function _ccipReceive(
-        Client.Any2EVMMessage memory any2EvmMessage
-    )
-        internal
-        override
-        onlyAllowlisted(
-            any2EvmMessage.sourceChainSelector,
-            abi.decode(any2EvmMessage.sender, (address))
-        ) 
-    {
-        // 
-        (uint256 gameId, address player, bytes32 squadHash, uint8 token, uint8 captain, uint8 viceCaptain, bool isRandom) = abi.decode(any2EvmMessage.data, (uint256, address, bytes32, uint8, uint8, uint8, bool));
-        if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(player, token, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
 
-        gameToPrediction[gameId][player] = Prediction(squadHash, any2EvmMessage.destTokenAmounts[0].amount, token, captain, viceCaptain, isRandom);
-        emit CrosschainReceived(any2EvmMessage.messageId);
-        emit BetPlaced(gameId,  player, gameToPrediction[gameId][player]);
-    }
 
     function setBetAmountInUSDC(uint256 _amount) external onlyOwner {
         BET_AMOUNT_IN_USDC = _amount;
