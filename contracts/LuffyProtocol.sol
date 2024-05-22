@@ -91,17 +91,17 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     event GamePlayerIdRemappingSet(uint256 gameId, uint256 _startsIn, string remapping);
 
     function setPlayerIdRemmapings(uint256 _gameId, uint256 _startsIn, string memory _remapping) external onlyOwner {
-        games[_gameId] = Game(_gameId, _remapping, _startsIn, true);
-        emit GamePlayerIdRemappingSet(_gameId, _startsIn, _remapping);
+        games[_gameId] = Game(_gameId, _remapping, block.timestamp + _startsIn, true);
+        emit GamePlayerIdRemappingSet(_gameId, block.timestamp + _startsIn, _remapping);
     }
 
     function makeSquadAndPlaceBet(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain) external payable{
-        if(!games[_gameId].exists) revert SelectSquadDisabled(_gameId);
+        if(!games[_gameId].exists || block.timestamp > games[_gameId].startsIn) revert SelectSquadDisabled(_gameId);
         _makeSquadAndPlaceBet(_gameId, _squadHash, _amount, _token, _captain, _viceCaptain);
     }
 
     function makeSquadAndPlaceBetRandom(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token) external payable{
-        if(!games[_gameId].exists) revert SelectSquadDisabled(_gameId);
+        if(!games[_gameId].exists || block.timestamp > games[_gameId].startsIn) revert SelectSquadDisabled(_gameId);
         _makeSquadAndPlaceBetRandom(_gameId, _squadHash, _amount, _token);
     }
 
@@ -117,7 +117,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     {
         (uint256 gameId, address player, bytes32 squadHash, uint8 token, uint8 captain, uint8 viceCaptain, bool isRandom) = abi.decode(any2EvmMessage.data, (uint256, address, bytes32, uint8, uint8, uint8, bool));
         if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(player, token, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
-        if(!games[gameId].exists) revert SelectSquadDisabled(gameId);
+         if(!games[gameId].exists || block.timestamp > games[gameId].startsIn) revert SelectSquadDisabled(gameId);
 
         gameToPrediction[gameId][player] = Prediction(squadHash, any2EvmMessage.destTokenAmounts[0].amount, token, captain, viceCaptain, isRandom);
         emit CrosschainReceived(any2EvmMessage.messageId);
