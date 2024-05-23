@@ -1,3 +1,11 @@
+const {
+  keccak256,
+  encodePacked,
+  encodeAbiParameters,
+  parseAbiParameters,
+  hexToBytes,
+} = await import("npm:viem");
+
 const matchId = args[0];
 const playerIdsRemmaping = args[1];
 const { ethers } = await import("npm:ethers@6.12.1");
@@ -84,6 +92,35 @@ function calculateFantasyPoints(playerStats) {
 
   return fantasyPoints;
 }
+function computeMerkleRoot(points) {
+  const hexValues = points.map((point) =>
+    keccak256(`0x${point.toString(16).padStart(128, "0")}`)
+  );
+
+  function recursiveMerkleRoot(hashes) {
+    if (hashes.length === 1) {
+      return hashes[0];
+    }
+
+    const nextLevelHashes = [];
+
+    // Combine adjacent hashes and hash them together
+    for (let i = 0; i < hashes.length; i += 2) {
+      const left = hashes[i];
+      const right = i + 1 < hashes.length ? hashes[i + 1] : "0x";
+      const combinedHash = keccak256(
+        encodePacked(["bytes32", "bytes32"], [left, right])
+      );
+      nextLevelHashes.push(combinedHash);
+    }
+
+    // Recur for the next level
+    return recursiveMerkleRoot(nextLevelHashes);
+  }
+
+  // Start the recursive computation
+  return recursiveMerkleRoot(hexValues);
+}
 
 function padArrayWithZeros(array) {
   const paddedLength = Math.pow(2, Math.ceil(Math.log2(array.length)));
@@ -107,6 +144,7 @@ const playerPerformanceRequest = Functions.makeHttpRequest({
   method: "GET",
   headers: {
     "X-RapidAPI-Key": secrets.mlsApiKey,
+
     "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
   },
 });
@@ -170,40 +208,54 @@ const computeMerkleRootRequest = Functions.makeHttpRequest({
     points: points,
   },
 });
+const [pinFileToPinataResponse] = await Promise.all([pinFileToPinataRequest]);
+const merkleRoot = computeMerkleRoot(padArrayWithZeros(points));
+console.log("PINATA RESPONSE");
+console.log(pinFileToPinataResponse.data);
 
-const [pinFileToPinataResponse, computeMerkleRootResponse] = await Promise.all([
-  pinFileToPinataRequest,
-  computeMerkleRootRequest,
-]);
-console.log("IPFS repsonse");
-console.log(pinFileToPinataResponse);
-const ipfsHash = pinFileToPinataResponse.data.IpfsHash;
+console.log(merkleRoot);
+const returnDataHex = encodeAbiParameters(
+  parseAbiParameters("bytes32, string"),
+  [merkleRoot, pinFileToPinataResponse.data.IpfsHash]
+);
+console.log(merkleRoot);
+console.log(pinFileToPinataResponse.data.IpfsHash);
 
-console.log("COMPUTE MERKLE ROOT RESPONSE");
-console.log(computeMerkleRootResponse.data);
-const merkleRoot = computeMerkleRootResponse.data.merkleRoot;
+return hexToBytes(returnDataHex);
 
-console.log("COMPUTE MERKLE ROOT RESPONSE");
-console.log(computeMerkleRootResponse.data);
+// const [pinFileToPinataResponse, computeMerkleRootResponse] = await Promise.all([
+//   pinFileToPinataRequest,
+//   computeMerkleRootRequest,
+// ]);
+// console.log("IPFS repsonse");
+// console.log(pinFileToPinataResponse);
+// const ipfsHash = pinFileToPinataResponse.data.IpfsHash;
 
-const encodeReturnDataRequest = Functions.makeHttpRequest({
-  url: "https://luffyprotocol.adaptable.app/api/encode-return-data",
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  data: {
-    ipfsHash: ipfsHash,
-    merkleRoot: merkleRoot,
-  },
-});
+// console.log("COMPUTE MERKLE ROOT RESPONSE");
+// console.log(computeMerkleRootResponse.data);
+// const merkleRoot = computeMerkleRootResponse.data.merkleRoot;
 
-const [encodeReturnDataResponse] = await Promise.all([encodeReturnDataRequest]);
+// console.log("COMPUTE MERKLE ROOT RESPONSE");
+// console.log(computeMerkleRootResponse.data);
 
-console.log("ENCODE RETURN DATA RESPONSE");
-console.log(encodeReturnDataResponse.data);
+// const encodeReturnDataRequest = Functions.makeHttpRequest({
+//   url: "https://luffyprotocol.adaptable.app/api/encode-return-data",
+//   method: "POST",
+//   headers: {
+//     "Content-Type": "application/json",
+//   },
+//   data: {
+//     ipfsHash: ipfsHash,
+//     merkleRoot: merkleRoot,
+//   },
+// });
 
-console.log("Convert to UInt8Array");
-const uint8ArrayResponse = ethers.getBytes(encodeReturnDataResponse.data);
+// const [encodeReturnDataResponse] = await Promise.all([encodeReturnDataRequest]);
 
-return uint8ArrayResponse;
+// console.log("ENCODE RETURN DATA RESPONSE");
+// console.log(encodeReturnDataResponse.data);
+
+// console.log("Convert to UInt8Array");
+// const uint8ArrayResponse = ethers.getBytes(encodeReturnDataResponse.data);
+
+// return uint8ArrayResponse;

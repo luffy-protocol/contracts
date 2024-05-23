@@ -12,12 +12,12 @@ task("simulate", "Simulates the Oracle function").setAction(
   async (taskArgs) => {
     // Initialize functions settings
     const source = fs
-      .readFileSync(path.resolve(__dirname, "oracle-script.js"))
+      .readFileSync(path.resolve(__dirname, "mls-oracle-script.js"))
       .toString();
 
     const args = [
-      "91663",
-      "https://amethyst-impossible-ptarmigan-368.mypinata.cloud/ipfs/Qmerg3DS3zorcefweBawjRRN9yW7UQbBFTNaduyc9JM4Nb/cskvsrr.json?pinataGatewayToken=CUMCxB7dqGB8wEEQqGSGd9u1edmJpWmR9b0Oiuewyt5gs633nKmTogRoKZMrG4Vk",
+      "1150754",
+      "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmUSzXkfuXSjTweMKUeVsS5KcBdsDksEGZfATh3zrmL1yF?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
     ];
     const secrets = {
       pinataKey: process.env.PINATA_API_KEY || "",
