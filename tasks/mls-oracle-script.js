@@ -92,6 +92,16 @@ function calculateFantasyPoints(playerStats) {
   return fantasyPoints;
 }
 
+function base64ToUint8Array(base64) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const uint8Array = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    uint8Array[i] = binaryString.charCodeAt(i);
+  }
+  return uint8Array;
+}
+
 const playerIdsRemmapingRequest = Functions.makeHttpRequest({
   url: playerIdsRemmaping,
   method: "GET",
@@ -116,29 +126,30 @@ const [playerPerformanceResponse, playerIdsRemmapingResponse] =
   await Promise.all([playerPerformanceRequest, playerIdsRemmapingRequest]);
 let points = new Array(128).fill(0);
 
-console.log("Player Performance Response");
-console.log(playerPerformanceResponse.data);
-console.log("Player Ids Remmaping Response");
-console.log(playerIdsRemmapingResponse.data);
-
-if (!playerPerformanceResponse.error || playerIdsRemmapingResponse.error) {
-  //process home Team
-  playerPerformanceResponse.data.response[0].players.forEach((player) => {
-    const point = calculateFantasyPoints(player.statistics[0]);
-    const playerId = player.player.id;
-    points[playerIdsRemmapingResponse.data[playerId]] = Math.ceil(
-      point < 0 ? 0 : point
-    );
-  });
-  // Process bowlers data
-  playerPerformanceResponse.data.response[1].players.forEach((player) => {
-    const point = calculateFantasyPoints(player.statistics[0]);
-    const playerId = player.player.id;
-    points[playerIdsRemmapingResponse.data[playerId]] = Math.ceil(
-      point < 0 ? 0 : point
-    );
-  });
+if (playerPerformanceResponse.error) {
+  throw new Error("PLAYER PERFORMANCE API ERROR");
 }
+
+if (playerIdsRemmapingResponse.error) {
+  throw new Error("PLAYER IDS REMAPPING API ERROR");
+}
+
+//process home Team
+playerPerformanceResponse.data.response[0].players.forEach((player) => {
+  const point = calculateFantasyPoints(player.statistics[0]);
+  const playerId = player.player.id;
+  points[playerIdsRemmapingResponse.data[playerId]] = Math.ceil(
+    point < 0 ? 0 : point
+  );
+});
+// Process bowlers data
+playerPerformanceResponse.data.response[1].players.forEach((player) => {
+  const point = calculateFantasyPoints(player.statistics[0]);
+  const playerId = player.player.id;
+  points[playerIdsRemmapingResponse.data[playerId]] = Math.ceil(
+    point < 0 ? 0 : point
+  );
+});
 
 const pinFileToPinataRequest = Functions.makeHttpRequest({
   url: `https://api.pinata.cloud/pinning/pinJSONToIPFS`,
@@ -175,7 +186,13 @@ const [pinFileToPinataResponse, computeMerkleRootResponse] = await Promise.all([
   computeMerkleRootRequest,
 ]);
 
-console.log(computeMerkleRootResponse.data);
+if (pinFileToPinataResponse.error) {
+  throw new Error("Error while pinning file to pinata");
+}
+
+if (computeMerkleRootResponse.error) {
+  throw new Error("Error while computing merkle root");
+}
 
 const encodeReturnDataRequest = Functions.makeHttpRequest({
   url: "https://luffyprotocol.adaptable.app/api/encode-return-data",
@@ -191,12 +208,11 @@ const encodeReturnDataRequest = Functions.makeHttpRequest({
 
 const [encodeReturnDataResponse] = await Promise.all([encodeReturnDataRequest]);
 
-console.log("ENCODE RETURN DATA RESPONSE");
-console.log(encodeReturnDataResponse.data);
+if (encodeReturnDataResponse.error) {
+  throw new Error("Error while encoding return data");
+}
 
-console.log("Convert to UInt8Array");
-const uint8ArrayResponse = ethers.getBytes(
+const uint8ArrayResponse = base64ToUint8Array(
   encodeReturnDataResponse.data.returnData
 );
-console.log(uint8ArrayResponse);
 return uint8ArrayResponse;
