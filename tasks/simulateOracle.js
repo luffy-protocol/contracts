@@ -21,7 +21,7 @@ task("simulate", "Simulates the Oracle function").setAction(
     ];
     const secrets = {
       pinataKey: process.env.PINATA_API_KEY || "",
-      cricBuzzKey: process.env.CRICKET_API_KEY || "",
+      mlsApiKey: process.env.MLS_API_KEY || "",
     };
 
     // Initialize ethers signer and provider to interact with the contracts onchain
