@@ -84,7 +84,7 @@ const networks = {
     linkToken: "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846",
     ethToUsdPriceFeed: "0x5498BB86BC934c8D34FDA08E81D444153d0D06aD",
     linkToUsdPriceFeed: "0x34C4c526902d88a3Aa98DB8a9b802603EB1E3470",
-    protocolAddress: "0x820E57f34bad5C06c8CaE0269423299c4F22f923",
+    protocolAddress: "0x64DD43fe66E7fB655CA1b556124406C54CC5a1A2",
   },
   optimismSepolia: {
     url:

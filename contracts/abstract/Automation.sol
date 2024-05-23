@@ -11,8 +11,12 @@ abstract contract Automation is ILogAutomation, ConfirmedOwner{
     
     uint256[2] public upKeepIds; // 0 - Time Trigger, 1 - Log Trigger
 
-    function setUpKeepIds(uint256[2] memory _upKeepIds) external onlyOwner{
-        upKeepIds=_upKeepIds;
+    function setTimeTriggerAutomation(uint256 _upKeepId) external onlyOwner{
+        upKeepIds[0]=_upKeepId;
+    }
+
+    function setLogTriggerAutomation(uint256 _upKeepId) external onlyOwner{
+        upKeepIds[1]=_upKeepId;
     }
 
     function getForwarderAddress(uint8 _automation) public view returns(address){

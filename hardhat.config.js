@@ -47,7 +47,7 @@ module.exports = {
       sepolia: networks.ethereumSepolia.verifyApiKey,
       arbitrumSepolia: networks.arbitrumSepolia.verifyApiKey,
       avalancheFujiTestnet: networks.avalancheFuji.verifyApiKey,
-      optimismSepolia: networks.optimismSepolia.verifyApiKey,
+      optimsimSepolia: networks.optimismSepolia.verifyApiKey,
       baseSepolia: networks.baseSepolia.verifyApiKey,
     },
     customChains: [

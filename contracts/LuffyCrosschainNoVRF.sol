@@ -10,7 +10,7 @@ import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.s
 
 error NotEnoughCrosschainFee(uint256 balance, uint256 fee);
 
-contract LuffyCrosschain is PredictionsNoVRF{
+contract LuffyCrosschainNoVRF is PredictionsNoVRF{
 
     uint64 public constant DESTINATION_CHAIN_SELECTOR=14767482510784806043; // AvalancheFuji Chain Selector
     address public protocolAddress;
