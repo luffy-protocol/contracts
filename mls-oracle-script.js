@@ -1,6 +1,5 @@
 const matchId = args[0];
 const playerIdsRemmaping = args[1];
-const { ethers } = await import("npm:ethers@6.12.1");
 if (secrets.pinataKey == "") {
   throw Error("PINATA_API_KEY environment variable not set for Pinata API.");
 }
@@ -8,7 +7,6 @@ if (secrets.pinataKey == "") {
 if (secrets.mlsApiKey == "") {
   throw Error("MLS_API_KEY environment variable not set for Rapid API.");
 }
-
 const pointsScheme = {
   minutes: 0.2,
   number: 0,
@@ -85,11 +83,14 @@ function calculateFantasyPoints(playerStats) {
   return fantasyPoints;
 }
 
-function padArrayWithZeros(array) {
-  const paddedLength = Math.pow(2, Math.ceil(Math.log2(array.length)));
-  return array.concat(
-    Array.from({ length: paddedLength - array.length }, () => 0)
-  );
+function base64ToUint8Array(base64) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const uint8Array = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    uint8Array[i] = binaryString.charCodeAt(i);
+  }
+  return uint8Array;
 }
 
 const playerIdsRemmapingRequest = Functions.makeHttpRequest({
@@ -107,6 +108,7 @@ const playerPerformanceRequest = Functions.makeHttpRequest({
   method: "GET",
   headers: {
     "X-RapidAPI-Key": secrets.mlsApiKey,
+
     "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
   },
 });
@@ -115,31 +117,31 @@ const [playerPerformanceResponse, playerIdsRemmapingResponse] =
   await Promise.all([playerPerformanceRequest, playerIdsRemmapingRequest]);
 let points = new Array(128).fill(0);
 
-console.log("Player Performance Response");
-console.log(playerPerformanceResponse.data);
-console.log("Player Ids Remmaping Response");
-console.log(playerIdsRemmapingResponse.data);
-
-if (!playerPerformanceResponse.error || playerIdsRemmapingResponse.error) {
-  //process home Team
-  playerPerformanceResponse.data.response[0].players.forEach((player) => {
-    const point = calculateFantasyPoints(player.statistics[0]);
-    const playerId = player.player.id;
-    points[playerIdsRemmapingResponse.data[playerId]] = Math.ceil(
-      point < 0 ? 0 : point
-    );
-  });
-  // Process bowlers data
-  playerPerformanceResponse.data.response[1].players.forEach((player) => {
-    const point = calculateFantasyPoints(player.statistics[0]);
-    const playerId = player.player.id;
-    points[playerIdsRemmapingResponse.data[playerId]] = Math.ceil(
-      point < 0 ? 0 : point
-    );
-  });
+if (playerPerformanceResponse.error) {
+  throw new Error("PLAYER PERFORMANCE API ERROR");
 }
 
-console.log("Fantasy points: ", points);
+if (playerIdsRemmapingResponse.error) {
+  throw new Error("PLAYER IDS REMAPPING API ERROR");
+}
+
+//process home Team
+playerPerformanceResponse.data.response[0].players.forEach((player) => {
+  const point = calculateFantasyPoints(player.statistics[0]);
+  const playerId = player.player.id;
+  points[playerIdsRemmapingResponse.data[playerId]] = Math.ceil(
+    point < 0 ? 0 : point
+  );
+});
+// Process bowlers data
+playerPerformanceResponse.data.response[1].players.forEach((player) => {
+  const point = calculateFantasyPoints(player.statistics[0]);
+  const playerId = player.player.id;
+  points[playerIdsRemmapingResponse.data[playerId]] = Math.ceil(
+    point < 0 ? 0 : point
+  );
+});
+
 const pinFileToPinataRequest = Functions.makeHttpRequest({
   url: `https://api.pinata.cloud/pinning/pinJSONToIPFS`,
   method: "POST",
@@ -149,7 +151,7 @@ const pinFileToPinataRequest = Functions.makeHttpRequest({
   },
   data: {
     pinataMetadata: {
-      name: "Gmae " + matchId,
+      name: "Game " + matchId,
     },
     pinataOptions: {
       cidVersion: 1,
@@ -170,21 +172,18 @@ const computeMerkleRootRequest = Functions.makeHttpRequest({
     points: points,
   },
 });
-
 const [pinFileToPinataResponse, computeMerkleRootResponse] = await Promise.all([
   pinFileToPinataRequest,
   computeMerkleRootRequest,
 ]);
-console.log("IPFS repsonse");
-console.log(pinFileToPinataResponse);
-const ipfsHash = pinFileToPinataResponse.data.IpfsHash;
 
-console.log("COMPUTE MERKLE ROOT RESPONSE");
-console.log(computeMerkleRootResponse.data);
-const merkleRoot = computeMerkleRootResponse.data.merkleRoot;
+if (pinFileToPinataResponse.error) {
+  throw new Error("Error while pinning file to pinata");
+}
 
-console.log("COMPUTE MERKLE ROOT RESPONSE");
-console.log(computeMerkleRootResponse.data);
+if (computeMerkleRootResponse.error) {
+  throw new Error("Error while computing merkle root");
+}
 
 const encodeReturnDataRequest = Functions.makeHttpRequest({
   url: "https://luffyprotocol.adaptable.app/api/encode-return-data",
@@ -193,17 +192,18 @@ const encodeReturnDataRequest = Functions.makeHttpRequest({
     "Content-Type": "application/json",
   },
   data: {
-    ipfsHash: ipfsHash,
-    merkleRoot: merkleRoot,
+    ipfsHash: pinFileToPinataResponse.data.IpfsHash,
+    merkleRoot: computeMerkleRootResponse.data.merkleRoot,
   },
 });
 
 const [encodeReturnDataResponse] = await Promise.all([encodeReturnDataRequest]);
 
-console.log("ENCODE RETURN DATA RESPONSE");
-console.log(encodeReturnDataResponse.data);
-
-console.log("Convert to UInt8Array");
-const uint8ArrayResponse = ethers.getBytes(encodeReturnDataResponse.data);
+if (encodeReturnDataResponse.error) {
+  throw new Error("Error while encoding return data");
+}
+const uint8ArrayResponse = base64ToUint8Array(
+  encodeReturnDataResponse.data.returnData
+);
 
 return uint8ArrayResponse;

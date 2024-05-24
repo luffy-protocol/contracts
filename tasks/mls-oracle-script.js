@@ -1,14 +1,5 @@
-const {
-  keccak256,
-  encodePacked,
-  encodeAbiParameters,
-  parseAbiParameters,
-  hexToBytes,
-} = await import("npm:viem");
-
 const matchId = args[0];
 const playerIdsRemmaping = args[1];
-const { ethers } = await import("npm:ethers@6.12.1");
 if (secrets.pinataKey == "") {
   throw Error("PINATA_API_KEY environment variable not set for Pinata API.");
 }
@@ -211,8 +202,8 @@ const [encodeReturnDataResponse] = await Promise.all([encodeReturnDataRequest]);
 if (encodeReturnDataResponse.error) {
   throw new Error("Error while encoding return data");
 }
-
 const uint8ArrayResponse = base64ToUint8Array(
   encodeReturnDataResponse.data.returnData
 );
+
 return uint8ArrayResponse;
