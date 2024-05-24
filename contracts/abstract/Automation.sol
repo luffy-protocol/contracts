@@ -9,7 +9,11 @@ abstract contract Automation is ILogAutomation, ConfirmedOwner{
     
     IKeeperRegistryMaster public automationRegistry=IKeeperRegistryMaster(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984);
     
-    uint256[2] public upKeepIds; // 0 - Time Trigger, 1 - Log Trigger
+    uint256[2] public upKeepIds; // 0 - Custom Logic Trigger, 1 - Log Trigger
+
+    constructor(uint256[2] memory _upKeepIds){
+        upKeepIds=_upKeepIds;
+    }
 
     function setTimeTriggerAutomation(uint256 _upKeepId) external onlyOwner{
         upKeepIds[0]=_upKeepId;

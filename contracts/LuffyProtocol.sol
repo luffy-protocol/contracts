@@ -43,10 +43,10 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
 
 
     struct Game{
-        uint256 gameId;
-        string remapping;
-        uint256 startsIn;
-        bool exists;
+        uint256 gameweek;
+        uint256[] gameIds;
+        string[] remappings;
+        uint256 resultsTriggersIn;
     }
 
     error SelectSquadDisabled(uint256 gameId);
@@ -55,10 +55,12 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     error ClaimWindowInComplete(uint256 currentTimestamp, uint256 deadline);
     error PanicClaimError();
 
+    uint256 public latestGameweek;
     mapping(uint256=>Game) public games;
     mapping(address=>uint256) public claimmables;
     mapping(uint256=>mapping(address=>uint256)) public rankings;
     mapping(uint256=>mapping(address=>uint256)) public winnings;
+    mapping(uint256=>bool) public gameIdsToRemappingsSet;
 
     struct ConstructorParams{
         string sourceCode;
@@ -66,10 +68,11 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         address ccipRouter;
         address usdcToken;
         address linkToken;
+        uint256[2] upKeepIds;
         AggregatorV3Interface[2] priceFeeds;
     }
 
-    constructor(ConstructorParams memory _params) Predictions( _params.vrfWrapper,  _params.ccipRouter,  _params.usdcToken,  _params.linkToken, _params.priceFeeds) PointsCompute(_params.sourceCode) ConfirmedOwner(msg.sender) {}
+    constructor(ConstructorParams memory _params) Predictions( _params.vrfWrapper,  _params.ccipRouter,  _params.usdcToken,  _params.linkToken, _params.priceFeeds) PointsCompute(_params.sourceCode) ConfirmedOwner(msg.sender) Automation(_params.upKeepIds) {}
 
     modifier onlyOwnerOrAutomation(uint8 _automation){
         address forwarderAddress=getForwarderAddress(_automation);
@@ -88,20 +91,23 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     event PointsClaimed(uint256 gameid, address claimer, bytes32 playerIds, uint256 totalPoints);
     event RewardsClaimed(uint256 gameId, address claimer, uint256 value, uint256 position);
     event RewardsWithdrawn(address claimer, uint256 value);
-    event GamePlayerIdRemappingSet(uint256 gameId, uint256 _startsIn, string remapping);
+    event GamePlayerIdRemappingSet(uint256 gameweek, uint256[] gameIds, string[]  remappings, uint256 resultsTriggersIn);
 
-    function setPlayerIdRemmapings(uint256 _gameId, uint256 _startsIn, string memory _remapping) external onlyOwner {
-        games[_gameId] = Game(_gameId, _remapping, block.timestamp + _startsIn, true);
-        emit GamePlayerIdRemappingSet(_gameId, block.timestamp + _startsIn, _remapping);
+
+    function setPlayerIdRemappings(uint256 gameweek, uint256[] memory gameIds, string[] memory remappings, uint256 resultsTriggersIn) public{
+        games[gameweek]=Game(gameweek, gameIds, remappings, resultsTriggersIn);
+        for(uint256 i=0; i<gameIds.length; i++) gameIdsToRemappingsSet[gameIds[i]]=true;
+        latestGameweek=gameweek;
+        emit GamePlayerIdRemappingSet(gameweek, gameIds, remappings, resultsTriggersIn);
     }
 
     function makeSquadAndPlaceBet(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain) external payable{
-        if(!games[_gameId].exists || block.timestamp > games[_gameId].startsIn) revert SelectSquadDisabled(_gameId);
+        if(!gameIdsToRemappingsSet[_gameId]) revert SelectSquadDisabled(_gameId);
         _makeSquadAndPlaceBet(_gameId, _squadHash, _amount, _token, _captain, _viceCaptain);
     }
 
     function makeSquadAndPlaceBetRandom(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token) external payable{
-        if(!games[_gameId].exists || block.timestamp > games[_gameId].startsIn) revert SelectSquadDisabled(_gameId);
+        if(!gameIdsToRemappingsSet[_gameId]) revert SelectSquadDisabled(_gameId);
         _makeSquadAndPlaceBetRandom(_gameId, _squadHash, _amount, _token);
     }
 
@@ -117,15 +123,15 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     {
         (uint256 gameId, address player, bytes32 squadHash, uint8 token, uint8 captain, uint8 viceCaptain, bool isRandom) = abi.decode(any2EvmMessage.data, (uint256, address, bytes32, uint8, uint8, uint8, bool));
         if(any2EvmMessage.destTokenAmounts[0].amount < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(player, token, any2EvmMessage.destTokenAmounts[0].amount, any2EvmMessage.destTokenAmounts[0].amount);
-         if(!games[gameId].exists || block.timestamp > games[gameId].startsIn) revert SelectSquadDisabled(gameId);
+        if(!gameIdsToRemappingsSet[gameId]) revert SelectSquadDisabled(gameId);
 
         gameToPrediction[gameId][player] = Prediction(squadHash, any2EvmMessage.destTokenAmounts[0].amount, token, captain, viceCaptain, isRandom);
         emit CrosschainReceived(any2EvmMessage.messageId);
         emit BetPlaced(gameId,  player, gameToPrediction[gameId][player]);
     }
 
-    function triggerFetchResults(uint256 gameId, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwnerOrAutomation(0) {
-        _triggerCompute(gameId, games[gameId].remapping, donHostedSecretsSlotID, donHostedSecretsVersion);
+    function triggerFetchResults(uint256 gameweek, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwnerOrAutomation(0) {
+        for(uint256 i=0; i<games[gameweek].gameIds.length; i++) _triggerCompute(games[gameweek].gameIds[i], games[gameweek].remappings[i], donHostedSecretsSlotID, donHostedSecretsVersion);
     }
 
     function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
@@ -210,8 +216,8 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit RewardsWithdrawn(_claimer, _amount);
     }
 
-    function zsetPlayerIdRemmapings(uint256 _gameId, uint256 _startsIn, string memory _remapping) external  {
-        emit GamePlayerIdRemappingSet(_gameId, _startsIn, _remapping);
+    function zsetPlayerIdRemmapings(uint256 gameweek, uint256[] memory gameIds, string[] memory remappings, uint256 resultsTriggersIn) external  {
+        emit GamePlayerIdRemappingSet(gameweek, gameIds, remappings, resultsTriggersIn);
     }
 
 }
