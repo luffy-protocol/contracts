@@ -12,7 +12,7 @@ abstract contract ZeroKnowledge {
         zkVerifier=new UltraVerifier();
     }
 
-    function _verifyProof(bytes memory _proof, bytes32[] memory _publicInputs) internal view returns(bool)
+    function _verifyProof(bytes memory _proof, bytes32[] memory _publicInputs) public view returns(bool)
     {
          try zkVerifier.verify(_proof, _publicInputs)
         {

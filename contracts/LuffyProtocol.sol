@@ -56,6 +56,9 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     error PanicClaimError();
 
     uint256 public latestGameweek;
+
+    uint8 public prevDonHostedSecretsSlotID;
+    uint64 public prevDonHostedSecretsVersion;
     mapping(uint256=>Game) public games;
     mapping(address=>uint256) public claimmables;
     mapping(uint256=>mapping(address=>uint256)) public rankings;
@@ -130,7 +133,23 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit BetPlaced(gameId,  player, gameToPrediction[gameId][player]);
     }
 
-    function triggerFetchResults(uint256 gameweek, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) external onlyOwnerOrAutomation(0) {
+    function checkUpkeep(
+        bytes calldata /* checkData */
+    )
+        external
+        view
+        override
+        returns (bool upkeepNeeded, bytes memory performData )
+    {
+        if(block.timestamp > games[latestGameweek].resultsTriggersIn) {
+            if(prevDonHostedSecretsSlotID!=0 && prevDonHostedSecretsVersion != 0){
+                upkeepNeeded = true;
+                performData=abi.encode(bytes32(0), "", false);
+            }
+        }
+    }
+
+    function triggerFetchResults(uint256 gameweek, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) public onlyOwnerOrAutomation(0) {
         for(uint256 i=0; i<games[gameweek].gameIds.length; i++) _triggerCompute(games[gameweek].gameIds[i], games[gameweek].remappings[i], donHostedSecretsSlotID, donHostedSecretsVersion);
     }
 
@@ -138,16 +157,21 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         latestResponse = response;
         latestError = err;
         if(response.length==0) emit OracleResponseFailed(requestId, err);
-        else emit OracleResponseSuccess(requestId, response);
-    } 
+        else emit OracleResponseSuccess(requestId, response, true);
+    }
 
     function performUpkeep(bytes calldata performData) external override onlyOwnerOrAutomation(1) {
-        (bytes32 _requestId, bytes memory response) = abi.decode(performData, (bytes32, bytes));
-        (bytes32 _merkleRoot, string memory _pointsIpfsHash)=abi.decode(response, (bytes32, string));
+        (bytes32 _requestId, bytes memory response, bool isFunctions) = abi.decode(performData, (bytes32, bytes, bool));
+        if(isFunctions)
+        {   
+            (bytes32 _merkleRoot, string memory _pointsIpfsHash)=abi.decode(response, (bytes32, string));
 
-        uint256 _gameId=requestToGameId[_requestId];
-        results[_gameId]=Results(_pointsIpfsHash, _merkleRoot, block.timestamp);
-        emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
+            uint256 _gameId=requestToGameId[_requestId];
+            results[_gameId]=Results(_pointsIpfsHash, _merkleRoot, block.timestamp);
+            emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
+        }else{
+            triggerFetchResults(latestGameweek, prevDonHostedSecretsSlotID, prevDonHostedSecretsVersion);
+        }
     }
 
     function claimPoints(uint256 _gameId, bytes32 _playerIds, uint256 _totalPoints, bytes memory _proof) external {
@@ -195,6 +219,11 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     // 4. Claim points on chain
     // 5. Claim rewards on chain
     // 6. Withdraw rewards on chain
+
+    function setDonHostedSecrets(uint8 _donHostedSecretsSlotID, uint64 _donHostedSecretsVersion) external onlyOwner{
+        prevDonHostedSecretsSlotID=_donHostedSecretsSlotID;
+        prevDonHostedSecretsVersion=_donHostedSecretsVersion;
+    }
 
     function zmakeSquadTest(uint256 _gameId, address _player, Prediction memory _prediction) external {
         emit BetPlaced(_gameId, _player, _prediction);

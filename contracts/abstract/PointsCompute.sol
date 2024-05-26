@@ -36,7 +36,7 @@ abstract contract PointsCompute is FunctionsClient, ILogAutomation {
         sourceCode=_sourceCode;
     }
 
-    event OracleResponseSuccess(bytes32 requestId, bytes response);
+    event OracleResponseSuccess(bytes32 requestId, bytes response, bool isFunction);
     event OracleResponseFailed(bytes32 requestId, bytes err);
     event OracleRequestSent(bytes32 requestId, uint256 gameId);
     event OracleResultsPublished(bytes32 requestId, uint256 gameId, bytes32 pointsMerkleRoot, string pointsIpfsHash);

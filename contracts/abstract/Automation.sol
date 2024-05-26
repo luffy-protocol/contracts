@@ -3,9 +3,11 @@ pragma solidity ^0.8.10;
 
 import {IKeeperRegistryMaster} from "@chainlink/contracts/src/v0.8/automation/interfaces/v2_1/IKeeperRegistryMaster.sol";
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
+import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
+
 import "../interface/ILogAutomation.sol";
 
-abstract contract Automation is ILogAutomation, ConfirmedOwner{
+abstract contract Automation is AutomationCompatibleInterface, ILogAutomation, ConfirmedOwner{
     
     IKeeperRegistryMaster public automationRegistry=IKeeperRegistryMaster(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984);
     
@@ -34,5 +36,7 @@ abstract contract Automation is ILogAutomation, ConfirmedOwner{
         upkeepNeeded = true;
         performData = log.data;
     }
+
+
 
 }
