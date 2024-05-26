@@ -18,7 +18,7 @@ task(
   "make-request",
   "Makes a request to the Oracle function in the contract"
 ).setAction(async (taskArgs) => {
-  const luffyProtocolAddress = "0x85028AE19BBDc6Beb9500AAbd598e3e75eA7983E"; // REPLACE this with your Functions consumer address
+  const luffyProtocolAddress = "0x9e496EA4A75350E188B8ead16c1E04441eB7f2c0"; // REPLACE this with your Functions consumer address
   const subscriptionId = 8378; // REPLACE this with your subscription ID
   const donId = "fun-avalanche-fuji-1";
   const routerAddress = "0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0";
@@ -129,7 +129,7 @@ task(
     "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmWbTKbiUoSmW4dKJLYoAT4a8AmRWFcrNYisGTET4o98AQ?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
   ];
   // Actual transaction call
-  const transaction = await LuffyProtocol.triggerResult(
+  const transaction = await LuffyProtocol.triggerRequest(
     args[0],
     args[1],
     slotIdNumber,

@@ -3,48 +3,25 @@ pragma solidity 0.8.25;
 
 import "./abstract/Predictions.sol";
 import "./abstract/ZeroKnowledge.sol";
-import "./abstract/PointsCompute.sol";
 import "./abstract/Automation.sol";
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-// Chailnink Integrations [6/6]
-// 1. Chainlink Functions - DONE Sub Id - preconfigured
-// 2. Chainlink Data Feeds - DONE No configurations
-// 3. Chainlink VRF - DONE No configurations | Direct Funding
-// 4. Chainlink CCIP - DONE No configurations | Direct Funding 
-// 5. Chainlink Log Trigger Automation - DONE Need to configure sub id
-// 6. Chainlink TIme Based Automation - DONE Need to configure sub id
 
-// Step 1: Register Squad
-// Step 2: Receive cross chain transactions
-//  - Receive bet amount in USD
-//  - 
-// Step 3: Chainlink Time based Automation
-// Step 4: Chainlink Log Trigger Auomation
-// Step 5: Chainlink Price Feeds to convert bet amount
-// Chainlnk VRF to 
+import {FunctionsClient} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
+import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
 
+error SelectSquadDisabled(uint256 gameId);
+error InvalidAutomationCaller(address caller);
+error ClaimWindowComplete(uint256 currentTimestamp, uint256 deadline);
+error ClaimWindowInComplete(uint256 currentTimestamp, uint256 deadline);
+error PanicClaimError();
 
-// Things that happen in this contract
-// Intial setup: Set upkeep ids for both automation
-// 1. Set player id remappings manually for each game along with their start times. DONE
-// 2. Choose squad for a game and place bet. DONE
-//  - Handle Crosschain bets too. PENDING
-//  - Chainlink VRF. PENDING
-// 3. Once match gets ended, Chainlink Time based automation is triggers the Chainlink Functions. DONE
-// 4. Chainlink Functions fetches the results and triggers a log DONE
-// 5. Chainlink Log Trigger Automation executes the code logic to assign the squad points ipfs hash and merkle root. DONE
-// 6. Users will call claim points by verifying the zero knowledge proof. DONE
-// 7. They will wait for 48 hours and claim the rewards based on the position in the leaderboard. DONE
-
-
-contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
+contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automation{
     using FunctionsRequest for FunctionsRequest.Request;  
     using Strings for uint256;
-
-
+    
     struct Game{
         uint256 gameweek;
         uint256[] gameIds;
@@ -52,11 +29,23 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         uint256 resultsTriggersIn;
     }
 
-    error SelectSquadDisabled(uint256 gameId);
-    error InvalidAutomationCaller(address caller);
-    error ClaimWindowComplete(uint256 currentTimestamp, uint256 deadline);
-    error ClaimWindowInComplete(uint256 currentTimestamp, uint256 deadline);
-    error PanicClaimError();
+    struct Results{
+        string ipfsHash;
+        bytes32 merkleRoot;
+        uint256 publishedTimestamp;
+    }
+
+    
+    bytes32 public donId;
+    uint64 public subscriptionId;
+
+    string public sourceCode;
+    bytes32 public latestRequestId;
+    bytes public latestResponse;
+    bytes public latestError;
+    mapping(bytes32=>uint256) public requestToGameId;
+    mapping(uint256=>Results) public results;
+
 
     uint256 public latestGameweek;
 
@@ -78,7 +67,11 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         AggregatorV3Interface[2] priceFeeds;
     }
 
-    constructor(ConstructorParams memory _params) Predictions( _params.vrfWrapper,  _params.ccipRouter,  _params.usdcToken,  _params.linkToken, _params.priceFeeds) PointsCompute(_params.sourceCode) ConfirmedOwner(msg.sender) Automation(_params.upKeepIds) {}
+    constructor(ConstructorParams memory _params) FunctionsClient(0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0) Predictions( _params.vrfWrapper,  _params.ccipRouter,  _params.usdcToken,  _params.linkToken, _params.priceFeeds) ConfirmedOwner(msg.sender) Automation(_params.upKeepIds) {
+        sourceCode=_params.sourceCode;
+        donId=0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000;
+        subscriptionId=8378;
+    }
 
     modifier onlyOwnerOrAutomation(uint8 _automation){
         address forwarderAddress=getForwarderAddress(_automation);
@@ -100,6 +93,11 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     event RewardsClaimed(uint256 gameId, address claimer, uint256 value, uint256 position);
     event RewardsWithdrawn(address claimer, uint256 value);
     event GamePlayerIdRemappingSet(uint256 gameweek, uint256[] gameIds, string[]  remappings, uint256 resultsTriggersIn);
+
+    event OracleResponseSuccess(bytes32 requestId, bytes response, bool isFunction);
+    event OracleResponseFailed(bytes32 requestId, bytes err);
+    event OracleRequestSent(bytes32 requestId, uint256 gameId);
+    event OracleResultsPublished(bytes32 requestId, uint256 gameId, bytes32 pointsMerkleRoot, string pointsIpfsHash);
 
 
     function setPlayerIdRemappings(uint256 gameweek, uint256[] memory gameIds, string[] memory remappings, uint256 resultsTriggersIn) public{
@@ -165,13 +163,13 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         // }
     }
 
-    function triggerResult(uint256 _gameId, string memory _remapping, uint8 _donHostedSecretsSlotId, uint64 _donHostedSecretsVersion, bytes[] memory bytesArgs) public onlyOwnerOrAutomation(0) {
+    function triggerRequest(uint256 gameId, string memory remapping, uint8 slotId, uint64 version, bytes[] memory bytesArgs) public onlyOwnerOrAutomation(0) {
         string[] memory args=new string[](2);
-        args[0]=_gameId.toString();
-        args[1]=_remapping;
-        _triggerCompute(sourceCode, "", _donHostedSecretsSlotId, _donHostedSecretsVersion, args, bytesArgs, SUBSCRIPTION_ID, 300000, DON_ID);
-        emit OracleRequestSent(latestRequestId, _gameId);
-        requestToGameId[latestRequestId]=_gameId;
+        args[0] = gameId.toString();
+        args[1] = remapping;
+        _triggerCompute(sourceCode, "", slotId, version, args, bytesArgs, subscriptionId, 300000, donId);
+        emit OracleRequestSent(latestRequestId, gameId);
+        requestToGameId[latestRequestId] = gameId;
     }
 
     function _triggerCompute(
