@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity 0.8.25;
 
 import "./abstract/Predictions.sol";
 import "./abstract/ZeroKnowledge.sol";
@@ -7,6 +7,7 @@ import "./abstract/PointsCompute.sol";
 import "./abstract/Automation.sol";
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 // Chailnink Integrations [6/6]
 // 1. Chainlink Functions - DONE Sub Id - preconfigured
@@ -40,6 +41,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
+    using FunctionsRequest for FunctionsRequest.Request;  
+    using Strings for uint256;
 
 
     struct Game{
@@ -151,8 +154,56 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         }
     }
 
-    function triggerFetchResults(uint256 gameweek, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion) public onlyOwnerOrAutomation(0) {
-        for(uint256 i=0; i<games[gameweek].gameIds.length; i++) _triggerCompute(games[gameweek].gameIds[i], games[gameweek].remappings[i], donHostedSecretsSlotID, donHostedSecretsVersion);
+    function triggerFetchResults(uint256 gameweek, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion, bytes[] memory bytesArgs) public onlyOwnerOrAutomation(0) {
+        // for(uint256 i=0; i<games[gameweek].gameIds.length; i++){
+        //     string[] memory args=new string[](2);
+        //     args[0]=games[gameweek].gameIds[i].toString();
+        //     args[1]=games[gameweek].remappings[i];
+        //     _triggerCompute(sourceCode, "", donHostedSecretsSlotID, donHostedSecretsVersion, args, bytesArgs, SUBSCRIPTION_ID, oracleCallbackGasLimit, DON_ID);
+        //     emit OracleRequestSent(latestRequestId, games[gameweek].gameIds[i]);
+        //     requestToGameId[latestRequestId]=games[gameweek].gameIds[i];
+        // }
+    }
+
+    function triggerResult(uint256 _gameId, string memory _remapping, uint8 _donHostedSecretsSlotId, uint64 _donHostedSecretsVersion, bytes[] memory bytesArgs) public onlyOwnerOrAutomation(0) {
+        string[] memory args=new string[](2);
+        args[0]=_gameId.toString();
+        args[1]=_remapping;
+        _triggerCompute(sourceCode, "", _donHostedSecretsSlotId, _donHostedSecretsVersion, args, bytesArgs, SUBSCRIPTION_ID, 300000, DON_ID);
+        emit OracleRequestSent(latestRequestId, _gameId);
+        requestToGameId[latestRequestId]=_gameId;
+    }
+
+    function _triggerCompute(
+        string memory source,
+        bytes memory encryptedSecretsUrls,
+        uint8 donHostedSecretsSlotID,
+        uint64 donHostedSecretsVersion,
+        string[] memory args,
+        bytes[] memory bytesArgs,
+        uint64 subscriptionId,
+        uint32 gasLimit,
+        bytes32 donID
+    ) internal returns (bytes32) {
+        FunctionsRequest.Request memory req;
+        req.initializeRequestForInlineJavaScript(source);
+        if (encryptedSecretsUrls.length > 0)
+            req.addSecretsReference(encryptedSecretsUrls);
+        else if (donHostedSecretsVersion > 0) {
+            req.addDONHostedSecrets(
+                donHostedSecretsSlotID,
+                donHostedSecretsVersion
+            );
+        }
+        if (args.length > 0) req.setArgs(args);
+        if (bytesArgs.length > 0) req.setBytesArgs(bytesArgs);
+        latestRequestId = _sendRequest(
+            req.encodeCBOR(),
+            subscriptionId,
+            gasLimit,
+            donID
+        );
+        return latestRequestId;
     }
 
     function fulfillRequest(bytes32 requestId, bytes memory response, bytes memory err) internal override {
@@ -172,7 +223,8 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
             results[_gameId]=Results(_pointsIpfsHash, _merkleRoot, block.timestamp);
             emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
         }else{
-            triggerFetchResults(latestGameweek, prevDonHostedSecretsSlotID, prevDonHostedSecretsVersion);
+            bytes[] memory bytesArgs=new bytes[](0);
+            triggerFetchResults(latestGameweek, prevDonHostedSecretsSlotID, prevDonHostedSecretsVersion, bytesArgs);
         }
     }
 

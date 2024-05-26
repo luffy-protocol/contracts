@@ -2,17 +2,14 @@ const fs = require("fs");
 const path = require("path");
 const {
   SecretsManager,
-  simulateScript,
-  buildRequestCBOR,
   ReturnType,
   decodeResult,
-  Location,
-  CodeLanguage,
   SubscriptionManager,
   ResponseListener,
   FulfillmentCode,
 } = require("@chainlink/functions-toolkit");
-const LuffyOracleAbi = require("../build/artifacts/contracts/LuffyOracle.sol/LuffyOracle.json");
+// const LuffyProtocolAbi = require("../build/artifacts/contracts/FunctionsTesting.sol/FunctionsTesting.json");
+const LuffyProtocolAbi = require("../build/artifacts/contracts/LuffyProtocol.sol/LuffyProtocol.json");
 const ethers = require("ethers");
 const { networks } = require("../networks");
 require("@chainlink/env-enc").config();
@@ -21,22 +18,21 @@ task(
   "make-request",
   "Makes a request to the Oracle function in the contract"
 ).setAction(async (taskArgs) => {
-  const luffyOracleAddress = "0x497f5b0aE3873604ac303582b13B66d14D520E7B"; // REPLACE this with your Functions consumer address
-  const LINK_TOKENAddress = "0x779877A7B0D9E8603169DdbD7836e478b4624789";
-  const subscriptionId = 2435; // REPLACE this with your subscription ID
-  const donId = "fun-ethereum-sepolia-1";
-  const routerAddress = "0xb83E47C2bC239B3bf370bc41e1459A34b41238D0";
+  const luffyProtocolAddress = "0x85028AE19BBDc6Beb9500AAbd598e3e75eA7983E"; // REPLACE this with your Functions consumer address
+  const subscriptionId = 8378; // REPLACE this with your subscription ID
+  const donId = "fun-avalanche-fuji-1";
+  const routerAddress = "0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0";
   const gatewayUrls = [
     "https://01.functions-gateway.testnet.chain.link/",
     "https://02.functions-gateway.testnet.chain.link/",
   ];
   const secrets = {
     pinataKey: process.env.PINATA_API_KEY || "",
-    cricBuzzKey: process.env.CRICKET_API_KEY || "",
+    mlsApiKey: process.env.MLS_API_KEY || "",
   };
   const slotIdNumber = 0; // slot ID where to upload the secrets
   const expirationTimeMinutes = 150; // expiration time in minutes of the secrets
-  const explorerUrl = "https://sepolia.etherscan.io";
+  const explorerUrl = "https://testnet.snowtrace.io/";
 
   const gasLimit = 300000;
 
@@ -47,7 +43,7 @@ task(
       "private key not provided - check your environment variables"
     );
 
-  const rpcUrl = networks.ethereumSepolia.url; // fetch eth sepolia RPC URL
+  const rpcUrl = networks.avalancheFuji.url; // fetch eth sepolia RPC URL
 
   if (!rpcUrl)
     throw new Error(`rpcUrl not provided  - check your environment variables`);
@@ -63,7 +59,7 @@ task(
   // Initialize and return SubscriptionManager
   const subscriptionManager = new SubscriptionManager({
     signer: signer,
-    LINK_TOKENAddress: LINK_TOKENAddress,
+    linkTokenAddress: networks.avalancheFuji.linkToken,
     functionsRouterAddress: routerAddress,
   });
   await subscriptionManager.initialize();
@@ -122,16 +118,23 @@ task(
 
   const donHostedSecretsVersion = parseInt(uploadResult.version); // fetch the version of the encrypted secrets
 
-  const LuffyOracle = new ethers.Contract(
-    luffyOracleAddress,
-    LuffyOracleAbi.abi,
+  const LuffyProtocol = new ethers.Contract(
+    luffyProtocolAddress,
+    LuffyProtocolAbi.abi,
     signer
   );
 
+  const args = [
+    "1150949",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmWbTKbiUoSmW4dKJLYoAT4a8AmRWFcrNYisGTET4o98AQ?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+  ];
   // Actual transaction call
-  const transaction = await LuffyOracle.triggerFetchpointsIpfsHash(
+  const transaction = await LuffyProtocol.triggerResult(
+    args[0],
+    args[1],
     slotIdNumber,
-    donHostedSecretsVersion
+    donHostedSecretsVersion,
+    []
   );
 
   // Log transaction details
@@ -200,10 +203,10 @@ task(
       if (ethers.utils.arrayify(responseBytesHexstring).length > 0) {
         const decodedResponse = decodeResult(
           response.responseBytesHexstring,
-          ReturnType.uint256
+          ReturnType.bytes
         );
         console.log(
-          `\n✅ Decoded response to ${ReturnType.uint256}: `,
+          `\n✅ Decoded response to ${ReturnType.bytes}: `,
           decodedResponse
         );
       }
