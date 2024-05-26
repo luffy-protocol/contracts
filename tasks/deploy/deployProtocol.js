@@ -20,7 +20,10 @@ task("deploy-protocol", "Deploys the LuffyProtocol contract")
       networks.avalancheFuji.ccipRouter,
       networks.avalancheFuji.usdcToken,
       networks.avalancheFuji.linkToken,
-      [1, 2],
+      [
+        "58387336616451823836734822744286210528343491445611152550443089243189960990986",
+        "42777266604767705378881328016196847279435767347742105064170763126637428887845",
+      ],
       [
         networks.avalancheFuji.ethToUsdPriceFeed,
         networks.avalancheFuji.linkToUsdPriceFeed,
