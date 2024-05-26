@@ -26,7 +26,6 @@ task("deploy-protocol", "Deploys the LuffyProtocol contract")
         networks.avalancheFuji.linkToUsdPriceFeed,
       ],
     ];
-    console.log(args);
 
     const protocolContractFactory = await ethers.getContractFactory(
       "LuffyProtocol"

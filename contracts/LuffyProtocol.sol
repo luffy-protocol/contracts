@@ -84,14 +84,16 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
     }
 
     receive() external payable {
-        (bool success, )=owner().call{value: msg.value}("");
+       (bool success, ) = owner().call{value: msg.value}("");
+       require(success, "Transfer Failed");
     }
 
     fallback() external payable {
-        (bool success, )=owner().call{value: msg.value}("");
+       (bool success, ) = owner().call{value: msg.value}("");
+       require(success, "Transfer Failed");
     }
     
-    event PointsClaimed(uint256 gameid, address claimer, bytes32 playerIds, uint256 totalPoints);
+    event PointsClaimed(uint256 gameid, address claimer, bytes32[11] playerIds, uint256 totalPoints);
     event RewardsClaimed(uint256 gameId, address claimer, uint256 value, uint256 position);
     event RewardsWithdrawn(address claimer, uint256 value);
     event GamePlayerIdRemappingSet(uint256 gameweek, uint256[] gameIds, string[]  remappings, uint256 resultsTriggersIn);
@@ -174,12 +176,18 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         }
     }
 
-    function claimPoints(uint256 _gameId, bytes32 _playerIds, uint256 _totalPoints, bytes memory _proof) external {
+    function claimPoints(uint256 _gameId, bytes32[11] memory _playerIds, uint256 _totalPoints, bytes memory _proof) external {
         if(block.timestamp > results[_gameId].publishedTimestamp + 2 days) revert ClaimWindowComplete(block.timestamp, results[_gameId].publishedTimestamp + 2 days);
-        bytes32[] memory _publicInputs=new bytes32[](2);
-        _publicInputs[0]=gameToPrediction[_gameId][msg.sender].squadHash;
-        _publicInputs[1]=bytes32(_totalPoints);
-        // _publicInputs[2]=playerIds;
+        bytes32[] memory _publicInputs=new bytes32[](47);
+        Prediction memory _prediction=gameToPrediction[_gameId][msg.sender];
+        bytes32 _squadHash=_prediction.squadHash;
+        // captain, vice captain, isRandom, playerIds, squadHash, claimed player points
+        _publicInputs[0]=bytes32(uint256(_prediction.captain));
+        _publicInputs[1]=bytes32(uint256(_prediction.viceCaptain));
+        _publicInputs[2]=bytes32(_prediction.isRandom?uint256(1):uint256(0));
+        for(uint i=0; i<11;i++) _publicInputs[3+i]=_playerIds[i];
+        for(uint i=0; i<32;i++) _publicInputs[14+i]=bytes32(uint256(uint8(_squadHash[i])));
+        _publicInputs[46]=bytes32(_totalPoints);
         _verifyProof(_proof, _publicInputs);
         emit PointsClaimed(_gameId, msg.sender, _playerIds, _totalPoints);
     }
@@ -233,7 +241,7 @@ contract LuffyProtocol is PointsCompute, ZeroKnowledge, Predictions, Automation{
         emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
     }
 
-    function zclaimPointsTest(uint256 _gameId, address _claimer,bytes32 _playerIds, uint256 _totalPoints) external{
+    function zclaimPointsTest(uint256 _gameId, address _claimer,bytes32[11] memory _playerIds, uint256 _totalPoints) external{
         emit PointsClaimed(_gameId, _claimer, _playerIds, _totalPoints);
     }
 
