@@ -18,7 +18,7 @@ task(
   "make-request",
   "Makes a request to the Oracle function in the contract"
 ).setAction(async (taskArgs) => {
-  const luffyProtocolAddress = "0x9e496EA4A75350E188B8ead16c1E04441eB7f2c0"; // REPLACE this with your Functions consumer address
+  const luffyProtocolAddress = "0x5Ca8b540FCc09ac4d5719cf645c8E636984900F0"; // REPLACE this with your Functions consumer address
   const subscriptionId = 8378; // REPLACE this with your subscription ID
   const donId = "fun-avalanche-fuji-1";
   const routerAddress = "0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0";
@@ -32,7 +32,7 @@ task(
   };
   const slotIdNumber = 0; // slot ID where to upload the secrets
   const expirationTimeMinutes = 150; // expiration time in minutes of the secrets
-  const explorerUrl = "https://testnet.snowtrace.io/";
+  const explorerUrl = "https://testnet.snowtrace.io";
 
   const gasLimit = 300000;
 

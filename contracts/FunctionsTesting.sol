@@ -20,30 +20,28 @@ contract FunctionsTesting is FunctionsClient, ConfirmedOwner {
     bytes public s_lastResponse;
     bytes public s_lastError;
     string public sourceCode;
-    uint64 public subscriptionId;
-    bytes32 public donId;
+    uint64 public s_subscriptionId;
+    bytes32 public s_donId;
 
     error UnexpectedRequestID(bytes32 requestId);
 
     event Response(bytes32 indexed requestId, bytes response, bytes err);
 
-    constructor(
-        address router, string memory _sourceCode, uint64 _subscriptionId, bytes32 _donId
-    ) FunctionsClient(router) ConfirmedOwner(msg.sender) {
+    constructor(string memory _sourceCode) FunctionsClient(0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0) ConfirmedOwner(msg.sender) {
         sourceCode=_sourceCode;
-        donId=_donId;
-        subscriptionId=_subscriptionId;
+        s_donId=0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000;
+        s_subscriptionId=8378;
     }
 
     function triggerRequest(uint256 gameId, string memory remapping, uint8 slotId, uint64 version, bytes[] memory bytesArgs) external {
         string[] memory args=new string[](2);
         args[0]=gameId.toString();
         args[1]=remapping;
-        sendRequest(sourceCode, "", slotId, version, args, bytesArgs, subscriptionId, 300000, donId);
+        _triggerCompute(sourceCode, "", slotId, version, args, bytesArgs, s_subscriptionId, 300000, s_donId);
     }
 
  
-    function sendRequest(
+    function _triggerCompute(
         string memory source,
         bytes memory encryptedSecretsUrls,
         uint8 donHostedSecretsSlotID,
@@ -53,7 +51,7 @@ contract FunctionsTesting is FunctionsClient, ConfirmedOwner {
         uint64 subscriptionId,
         uint32 gasLimit,
         bytes32 donID
-    ) internal returns (bytes32 requestId) {
+    ) internal returns (bytes32) {
         FunctionsRequest.Request memory req;
         req.initializeRequestForInlineJavaScript(source);
         if (encryptedSecretsUrls.length > 0)

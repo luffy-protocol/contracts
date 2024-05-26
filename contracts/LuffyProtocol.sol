@@ -8,7 +8,6 @@ import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/Confir
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-
 import {FunctionsClient} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/FunctionsClient.sol";
 import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
 
@@ -163,7 +162,7 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
         // }
     }
 
-    function triggerRequest(uint256 gameId, string memory remapping, uint8 slotId, uint64 version, bytes[] memory bytesArgs) public onlyOwnerOrAutomation(0) {
+    function triggerRequest(uint256 gameId, string memory remapping, uint8 slotId, uint64 version, bytes[] memory bytesArgs) external {
         string[] memory args=new string[](2);
         args[0] = gameId.toString();
         args[1] = remapping;

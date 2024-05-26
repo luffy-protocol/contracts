@@ -18,12 +18,7 @@ task("deploy-testing", "Deploys the FunctionsTesting contract")
       "FunctionsTesting"
     );
 
-    const args = [
-      "0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0",
-      fs.readFileSync("./mls-oracle-script.js", "utf8"),
-      8378,
-      "0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000",
-    ];
+    const args = [fs.readFileSync("./mls-oracle-script.js", "utf8")];
     console.log(args);
     const testingContract = await testingContractFactory.deploy(...args);
 
