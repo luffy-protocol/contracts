@@ -35,8 +35,8 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
     }
 
     
-    bytes32 public donId;
-    uint64 public subscriptionId;
+    bytes32 public DON_ID=0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000;
+    uint64 public SUBSCRIPTION_ID=8378;
 
     string public sourceCode;
     bytes32 public latestRequestId;
@@ -68,8 +68,6 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
 
     constructor(ConstructorParams memory _params) FunctionsClient(0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0) Predictions( _params.vrfWrapper,  _params.ccipRouter,  _params.usdcToken,  _params.linkToken, _params.priceFeeds) ConfirmedOwner(msg.sender) Automation(_params.upKeepIds) {
         sourceCode=_params.sourceCode;
-        donId=0x66756e2d6176616c616e6368652d66756a692d31000000000000000000000000;
-        subscriptionId=8378;
     }
 
     modifier onlyOwnerOrAutomation(uint8 _automation){
@@ -151,7 +149,7 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
         }
     }
 
-    function triggerFetchResults(uint256 gameweek, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion, bytes[] memory bytesArgs) public onlyOwnerOrAutomation(0) {
+    function _triggerFetchResults(uint256 gameweek, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion, bytes[] memory bytesArgs) internal onlyOwnerOrAutomation(0) {
         // for(uint256 i=0; i<games[gameweek].gameIds.length; i++){
         //     string[] memory args=new string[](2);
         //     args[0]=games[gameweek].gameIds[i].toString();
@@ -162,11 +160,12 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
         // }
     }
 
+
     function triggerRequest(uint256 gameId, string memory remapping, uint8 slotId, uint64 version, bytes[] memory bytesArgs) external {
         string[] memory args=new string[](2);
         args[0] = gameId.toString();
         args[1] = remapping;
-        _triggerCompute(sourceCode, "", slotId, version, args, bytesArgs, subscriptionId, 300000, donId);
+        _triggerCompute(sourceCode, "", slotId, version, args, bytesArgs, SUBSCRIPTION_ID, 300000, DON_ID);
         emit OracleRequestSent(latestRequestId, gameId);
         requestToGameId[latestRequestId] = gameId;
     }
@@ -221,7 +220,7 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
             emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
         }else{
             bytes[] memory bytesArgs=new bytes[](0);
-            triggerFetchResults(latestGameweek, prevDonHostedSecretsSlotID, prevDonHostedSecretsVersion, bytesArgs);
+            _triggerFetchResults(latestGameweek, prevDonHostedSecretsSlotID, prevDonHostedSecretsVersion, bytesArgs);
         }
     }
 
