@@ -161,7 +161,7 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
     }
 
 
-    function triggerRequest(uint256 gameId, string memory remapping, uint8 slotId, uint64 version, bytes[] memory bytesArgs) external {
+    function triggerFetchResult(uint256 gameId, string memory remapping, uint8 slotId, uint64 version, bytes[] memory bytesArgs) external {
         string[] memory args=new string[](2);
         args[0] = gameId.toString();
         args[1] = remapping;
