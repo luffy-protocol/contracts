@@ -32,6 +32,7 @@ const networks = {
     linkToken: "0x779877A7B0D9E8603169DdbD7836e478b4624789",
     ethToUsdPriceFeed: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
     linkToUsdPriceFeed: "0xc59E3633BAAC79493d908e63626716e204A45EdF",
+    crosschainAddress: "0xa12Ffa8429b6c0e4AcFD93aFbd30705bBE254FD5",
   },
   arbitrumSepolia: {
     url:
@@ -50,6 +51,7 @@ const networks = {
     linkToken: "0xb1D4538B4571d411F07960EF2838Ce337FE1E80E",
     ethToUsdPriceFeed: "0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165",
     linkToUsdPriceFeed: "0x0FB99723Aee6f420beAD13e6bBB79b7E6F034298",
+    crosschainAddress: "0x87dd08be032a03d937F2A8003dfa9C52821cbaB9",
   },
   baseSepolia: {
     url:
@@ -68,6 +70,7 @@ const networks = {
     linkToken: "0xE4aB69C077896252FAFBD49EFD26B5D171A32410",
     ethToUsdPriceFeed: "0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1",
     linkToUsdPriceFeed: "0xb113F5A928BCfF189C998ab20d753a47F9dE5A61",
+    crosschainAddress: "0x513F5406f1C40874f3c0cD078E606897DC29F67b",
   },
   avalancheFuji: {
     url: "https://api.avax-test.network/ext/bc/C/rpc",
@@ -84,7 +87,7 @@ const networks = {
     linkToken: "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846",
     ethToUsdPriceFeed: "0x5498BB86BC934c8D34FDA08E81D444153d0D06aD",
     linkToUsdPriceFeed: "0x34C4c526902d88a3Aa98DB8a9b802603EB1E3470",
-    protocolAddress: "0xcC4203412a962fEFC2e41003bB1Ae296Ff7FE8f3",
+    protocolAddress: "0x09249908F451EAe8fF4612e3E2C4a0f574a114f4",
   },
   optimismSepolia: {
     url:
@@ -103,6 +106,7 @@ const networks = {
     linkToken: "0xE4aB69C077896252FAFBD49EFD26B5D171A32410",
     ethToUsdPriceFeed: "0x61Ec26aA57019C486B10502285c5A3D4A4750AD7",
     linkToUsdPriceFeed: "0x53f91dA33120F44893CB896b12a83551DEDb31c6",
+    crosschainAddress: "0xAa25e4A9db1F3e493B9a20279572e4F15Ce6eEa2",
   },
 };
 
