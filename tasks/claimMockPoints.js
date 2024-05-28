@@ -1,13 +1,5 @@
-const fs = require("fs");
 const path = require("path");
-const {
-  SecretsManager,
-  ReturnType,
-  decodeResult,
-  SubscriptionManager,
-  ResponseListener,
-  FulfillmentCode,
-} = require("@chainlink/functions-toolkit");
+
 const LuffyProtocolAbi = require("../build/artifacts/contracts/LuffyProtocol.sol/LuffyProtocol.json");
 const ethers = require("ethers");
 const { networks } = require("../networks");
