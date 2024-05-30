@@ -92,7 +92,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
         uint256 _betAmountInUSD=getValueInUSD(msg.value, 0);
 
         // TODO: Swap ETH to USDC. and after swapping...
-        if(_betAmountInUSD < BET_AMOUNT_IN_USDC / 10 ** 8) revert InsufficientBetAmount(msg.sender, 0, _betAmountInUSD, msg.value);
+        if(_betAmountInUSD < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(msg.sender, 0, _betAmountInUSD, msg.value);
         
         // Return the total amount that was used for both the bet and the swap combined
         return msg.value;
@@ -107,7 +107,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
 
         // TODO: Swap LINK to USDC
 
-        if(_betAmountInUSD < BET_AMOUNT_IN_USDC / 10 ** 8) revert InsufficientBetAmount(msg.sender, 1, _betAmountInUSD, _betAmountInWei);
+        if(_betAmountInUSD < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(msg.sender, 1, _betAmountInUSD, _betAmountInWei);
 
         // Return the total amount that was used for both the bet and the swap combined
         return _betAmountInWei;
