@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.19;
 
 import "./abstract/Predictions.sol";
 import "./abstract/ZeroKnowledge.sol";
@@ -56,6 +56,8 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
     mapping(uint256=>mapping(address=>uint256)) public winnings;
     mapping(uint256=>bool) public gameIdsToRemappingsSet;
 
+    uint256 private cacheFunds;
+
     struct ConstructorParams{
         string sourceCode;
         address vrfWrapper;
@@ -77,13 +79,11 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
     }
 
     receive() external payable {
-       (bool success, ) = owner().call{value: msg.value}("");
-       require(success, "Transfer Failed");
+        cacheFunds+=msg.value;
     }
 
     fallback() external payable {
-       (bool success, ) = owner().call{value: msg.value}("");
-       require(success, "Transfer Failed");
+        cacheFunds+=msg.value;
     }
     
     event PointsClaimed(uint256 gameid, address claimer, bytes32[11] playerIds, uint256 totalPoints);
@@ -305,4 +305,9 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
         emit GamePlayerIdRemappingSet(gameweek, gameIds, remappings, resultsTriggersIn);
     }
 
+    function clearCacheFunds() external onlyOwner{
+       (bool success, ) = msg.sender.call{value: cacheFunds}("");
+        require(success, "Transfer failed.");
+        cacheFunds=0;
+    }
 }

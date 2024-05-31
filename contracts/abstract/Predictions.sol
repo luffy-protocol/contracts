@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.19;
 
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import "./PriceFeeds.sol";
@@ -90,12 +90,8 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
 
     function _swapEthToUSDC() internal returns(uint256) {
         uint256 _betAmountInUSD=getValueInUSD(msg.value, 0);
-
-        // TODO: Swap ETH to USDC. and after swapping...
         if(_betAmountInUSD < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(msg.sender, 0, _betAmountInUSD, msg.value);
-        
-        // Return the total amount that was used for both the bet and the swap combined
-        return msg.value;
+        return 0;
     }
 
     function _swapLinkToUSDC(uint256 _betAmountInWei) internal returns(uint256) {
@@ -105,13 +101,12 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
         
         IERC20(LINK_TOKEN).transferFrom(msg.sender, address(this), _betAmountInWei);
 
-        // TODO: Swap LINK to USDC
-
         if(_betAmountInUSD < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(msg.sender, 1, _betAmountInUSD, _betAmountInWei);
 
-        // Return the total amount that was used for both the bet and the swap combined
-        return _betAmountInWei;
+        return 0;
     }
+
+    
 
     function  _transferUsdc(uint256 _betAmountInWei) internal {
         if(IERC20(USDC_TOKEN).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, USDC_TOKEN, _betAmountInWei);
