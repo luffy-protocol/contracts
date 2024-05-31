@@ -22,6 +22,15 @@ contract LuffyCrosschainNoVRF is PredictionsNoVRF{
         protocolAddress=_protocolAddress;
     }
 
+
+    receive() external payable {
+        cacheFunds+=msg.value;
+    }
+
+    fallback() external payable {
+        cacheFunds+=msg.value;
+    }
+
     event CrosschainMessageSent(bytes32 messageId);
 
     function makeSquadAndPlaceBet(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain) external payable{
@@ -29,6 +38,7 @@ contract LuffyCrosschainNoVRF is PredictionsNoVRF{
         bytes memory _data=abi.encode(_gameId, msg.sender, _squadHash, _token, _captain, _viceCaptain, false);
         _sendMessagePayNative(_remainingValue, _data);
     }
+    
 
     function _sendMessagePayNative(uint256 _fee, bytes memory _data) internal returns (bytes32 messageId)
     {
@@ -39,7 +49,7 @@ contract LuffyCrosschainNoVRF is PredictionsNoVRF{
         if (fees > _fee)
             revert NotEnoughCrosschainFee(_fee, fees);
 
-        IERC20(USDC_TOKEN).approve(address(router), _fee);
+        IERC20(USDC_TOKEN).approve(address(router), BET_AMOUNT_IN_USDC);
 
         messageId = router.ccipSend{value: _fee}(
             DESTINATION_CHAIN_SELECTOR,

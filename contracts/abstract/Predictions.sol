@@ -60,11 +60,15 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
     function _makeSquadAndPlaceBet(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain) internal virtual returns(uint256){
 
         uint256 _remainingValue = msg.value;
-        if(_token == 0) _remainingValue = msg.value - _swapEthToUSDC();
-        else if(_token == 1) _remainingValue = msg.value - _swapLinkToUSDC(_amount);
+
+        if(_token == 0){
+            _swapEthToUSDC(_amount);
+            _remainingValue = msg.value - _amount;
+        }
+        else if(_token == 1) _swapLinkToUSDC(_amount);
         else if(_token == 2) _transferUsdc(_amount);
         else revert InvalidBetToken(_token);
-
+        
         gameToPrediction[_gameId][msg.sender] = Prediction(_squadHash, _amount, _token, _captain, _viceCaptain, false);
         emit BetPlaced(_gameId,  msg.sender, gameToPrediction[_gameId][msg.sender]);
 
@@ -74,8 +78,11 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
     function _makeSquadAndPlaceBetRandom(uint256 _gameId, bytes32 _squadHash,  uint256 _amount, uint8 _token) internal virtual returns(uint256){
         
         uint256 _remainingValue = msg.value;
-        if(_token == 0) _remainingValue = msg.value - _swapEthToUSDC();
-        else if(_token == 1) _remainingValue = msg.value - _swapLinkToUSDC(_amount);
+        if(_token == 0){
+            _swapEthToUSDC(_amount);
+            _remainingValue = msg.value - _amount;
+        }
+        else if(_token == 1) _swapLinkToUSDC(_amount);
         else if(_token == 2) _transferUsdc(_amount);
         else revert InvalidBetToken(_token);
 
@@ -88,22 +95,20 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
         return _remainingValue;
     }
 
-    function _swapEthToUSDC() internal returns(uint256) {
-        uint256 _betAmountInUSD=getValueInUSD(msg.value, 0);
-        if(_betAmountInUSD < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(msg.sender, 0, _betAmountInUSD, msg.value);
-        return 0;
+    function _swapEthToUSDC(uint256 _amountInWei) internal {
+        uint256 _betAmountInUSD=getValueInUSD(_amountInWei, 0);
+        if(_betAmountInUSD < BET_AMOUNT_IN_USDC * 10 ** 2) revert InsufficientBetAmount(msg.sender, 0, _betAmountInUSD, msg.value);
     }
 
-    function _swapLinkToUSDC(uint256 _betAmountInWei) internal returns(uint256) {
+    function _swapLinkToUSDC(uint256 _betAmountInWei) internal {
         if(IERC20(LINK_TOKEN).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, LINK_TOKEN, _betAmountInWei);
         
         uint256 _betAmountInUSD=getValueInUSD(_betAmountInWei, 1);
         
         IERC20(LINK_TOKEN).transferFrom(msg.sender, address(this), _betAmountInWei);
 
-        if(_betAmountInUSD < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(msg.sender, 1, _betAmountInUSD, _betAmountInWei);
+        if(_betAmountInUSD < BET_AMOUNT_IN_USDC * 10 ** 2) revert InsufficientBetAmount(msg.sender, 1, _betAmountInUSD, _betAmountInWei);
 
-        return 0;
     }
 
     

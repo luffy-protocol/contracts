@@ -10,7 +10,7 @@ abstract contract Randomness is VRFV2PlusWrapperConsumerBase, ConfirmedOwner{
 
     uint16 public requestConfirmations = 3;
     uint32 public numWords = 1;
-    uint32 public vrfCallbackGasLimit = 400_000;
+    uint32 public vrfCallbackGasLimit = 500_000;
     IVRFV2PlusWrapper public immutable VRF_WRAPPER;
 
     constructor(address _vrfWrapper) VRFV2PlusWrapperConsumerBase(_vrfWrapper){

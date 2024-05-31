@@ -17,6 +17,14 @@ contract LuffyCrosschain is Predictions{
 
     mapping(address=>uint256) public valueBalance;
 
+    
+    receive() external payable {
+        cacheFunds+=msg.value;
+    }
+
+    fallback() external payable {
+        cacheFunds+=msg.value;
+    }
 
     constructor(address _protocolAddress, address _vrfWrapper, address _ccipRouter, address _usdcToken, address _linkToken, AggregatorV3Interface[2] memory _priceFeeds) Predictions( _vrfWrapper,  _ccipRouter,  _usdcToken,  _linkToken, _priceFeeds) ConfirmedOwner(msg.sender) {
         protocolAddress=_protocolAddress;
@@ -49,7 +57,6 @@ contract LuffyCrosschain is Predictions{
         bytes memory _data=abi.encode(_game.gameId, _game.player, block.timestamp, _prediction.squadHash, _prediction.token, _prediction.captain, _prediction.viceCaptain, true);
 
         _sendMessagePayNative(valueBalance[_game.player], _data);
-        
     }
 
 
@@ -62,7 +69,7 @@ contract LuffyCrosschain is Predictions{
         if (fees > _fee)
             revert NotEnoughCrosschainFee(_fee, fees);
 
-        IERC20(USDC_TOKEN).approve(address(router), _fee);
+        IERC20(USDC_TOKEN).approve(address(router), BET_AMOUNT_IN_USDC);
 
         messageId = router.ccipSend{value: _fee}(
             DESTINATION_CHAIN_SELECTOR,
