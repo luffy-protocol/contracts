@@ -9,7 +9,7 @@ import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 
 error InvalidBetToken(uint8 token);
-error InsufficientBetAmount(address sender, uint8 token, uint256 betInUSD, uint256 betInWei);
+error InsufficientBetAmount(address sender, uint8 token, uint256 requiredBetInWei, uint256 betInWei);
 error InsufficientAllowance(address sender, address token, uint256 amountInWei);
 error InvalidCrosschainCaller(address caller);
 
@@ -96,22 +96,16 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
     }
 
     function _swapEthToUSDC(uint256 _amountInWei) internal {
-        uint256 _betAmountInUSD=getValueInUSD(_amountInWei, 0);
-        if(_betAmountInUSD < BET_AMOUNT_IN_USDC * 10 ** 2) revert InsufficientBetAmount(msg.sender, 0, _betAmountInUSD, msg.value);
+        uint256 _betValueInWei=getBetValue(BET_AMOUNT_IN_USDC, 0);
+        if(_amountInWei < _betValueInWei) revert InsufficientBetAmount(msg.sender, 0, _betValueInWei, _amountInWei);
     }
 
-    function _swapLinkToUSDC(uint256 _betAmountInWei) internal {
-        if(IERC20(LINK_TOKEN).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, LINK_TOKEN, _betAmountInWei);
-        
-        uint256 _betAmountInUSD=getValueInUSD(_betAmountInWei, 1);
-        
-        IERC20(LINK_TOKEN).transferFrom(msg.sender, address(this), _betAmountInWei);
-
-        if(_betAmountInUSD < BET_AMOUNT_IN_USDC * 10 ** 2) revert InsufficientBetAmount(msg.sender, 1, _betAmountInUSD, _betAmountInWei);
-
+    function _swapLinkToUSDC(uint256 _amountInWei) internal {
+        if(IERC20(LINK_TOKEN).allowance(msg.sender, address(this)) < _amountInWei) revert InsufficientAllowance(msg.sender, LINK_TOKEN, _amountInWei);
+        uint256 _betValueInWei=getBetValue(BET_AMOUNT_IN_USDC, 0);
+        IERC20(LINK_TOKEN).transferFrom(msg.sender, address(this), _amountInWei);
+        if(_amountInWei < _betValueInWei) revert InsufficientBetAmount(msg.sender, 1, _betValueInWei, _amountInWei);
     }
-
-    
 
     function  _transferUsdc(uint256 _betAmountInWei) internal {
         if(IERC20(USDC_TOKEN).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, USDC_TOKEN, _betAmountInWei);
@@ -120,11 +114,6 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
 
         if(_betAmountInWei < BET_AMOUNT_IN_USDC) revert InsufficientBetAmount(msg.sender, 2, _betAmountInWei, _betAmountInWei);
     }
-
-
-
-
-
 
     function setBetAmountInUSDC(uint256 _amount) external onlyOwner {
         BET_AMOUNT_IN_USDC = _amount;

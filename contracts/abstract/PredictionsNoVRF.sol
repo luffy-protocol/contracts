@@ -9,7 +9,7 @@ import {CCIPReceiver} from "@chainlink/contracts-ccip/src/v0.8/ccip/applications
 import {Client} from "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/Client.sol";
 
 error InvalidBetToken(uint8 token);
-error InsufficientBetAmount(address sender, uint8 token, uint256 betInUSD, uint256 betInWei);
+error InsufficientBetAmount(address sender, uint8 token, uint256 requiredBetInWei, uint256 betInWei);
 error InsufficientAllowance(address sender, address token, uint256 amountInWei);
 error InvalidCrosschainCaller(address caller);
 
@@ -59,41 +59,32 @@ abstract contract PredictionsNoVRF is PriceFeeds, CCIPReceiver, ConfirmedOwner{
 
     function _makeSquadAndPlaceBet(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token, uint8 _captain, uint8 _viceCaptain) internal virtual returns(uint256){
 
-        uint256 _remainingValue = msg.value;
-        if(_token == 0) _remainingValue = msg.value - _swapEthToUSDC();
-        else if(_token == 1) _remainingValue = msg.value - _swapLinkToUSDC(_amount);
+       uint256 _remainingValue = msg.value;
+
+        if(_token == 0){
+            _swapEthToUSDC(_amount);
+            _remainingValue = msg.value - _amount;
+        }
+        else if(_token == 1) _swapLinkToUSDC(_amount);
         else if(_token == 2) _transferUsdc(_amount);
         else revert InvalidBetToken(_token);
-
+        
         gameToPrediction[_gameId][msg.sender] = Prediction(_squadHash, _amount, _token, _captain, _viceCaptain, false);
         emit BetPlaced(_gameId,  msg.sender, gameToPrediction[_gameId][msg.sender]);
 
         return _remainingValue;
     }
 
-    function _swapEthToUSDC() internal returns(uint256) {
-        uint256 _betAmountInUSD=getValueInUSD(msg.value, 0);
-
-        // TODO: Swap ETH to USDC. and after swapping...
-        if(_betAmountInUSD < BET_AMOUNT_IN_USDC / 10 ** 8) revert InsufficientBetAmount(msg.sender, 0, _betAmountInUSD, msg.value);
-        
-        // Return the total amount that was used for both the bet and the swap combined
-        return msg.value;
+    function _swapEthToUSDC(uint256 _amountInWei) internal {
+        uint256 _betValueInWei=getBetValue(BET_AMOUNT_IN_USDC, 0);
+        if(_amountInWei < _betValueInWei) revert InsufficientBetAmount(msg.sender, 0, _betValueInWei, _amountInWei);
     }
 
-    function _swapLinkToUSDC(uint256 _betAmountInWei) internal returns(uint256) {
-        if(IERC20(LINK_TOKEN).allowance(msg.sender, address(this)) < _betAmountInWei) revert InsufficientAllowance(msg.sender, LINK_TOKEN, _betAmountInWei);
-        
-        uint256 _betAmountInUSD=getValueInUSD(_betAmountInWei, 1);
-        
-        IERC20(LINK_TOKEN).transferFrom(msg.sender, address(this), _betAmountInWei);
-
-        // TODO: Swap LINK to USDC
-
-        if(_betAmountInUSD < BET_AMOUNT_IN_USDC / 10 ** 8) revert InsufficientBetAmount(msg.sender, 1, _betAmountInUSD, _betAmountInWei);
-
-        // Return the total amount that was used for both the bet and the swap combined
-        return _betAmountInWei;
+    function _swapLinkToUSDC(uint256 _amountInWei) internal {
+        if(IERC20(LINK_TOKEN).allowance(msg.sender, address(this)) < _amountInWei) revert InsufficientAllowance(msg.sender, LINK_TOKEN, _amountInWei);
+        uint256 _betValueInWei=getBetValue(BET_AMOUNT_IN_USDC, 0);
+        IERC20(LINK_TOKEN).transferFrom(msg.sender, address(this), _amountInWei);
+        if(_amountInWei < _betValueInWei) revert InsufficientBetAmount(msg.sender, 1, _betValueInWei, _amountInWei);
     }
 
     function  _transferUsdc(uint256 _betAmountInWei) internal {
@@ -108,6 +99,5 @@ abstract contract PredictionsNoVRF is PriceFeeds, CCIPReceiver, ConfirmedOwner{
         BET_AMOUNT_IN_USDC = _amount;
         emit BetAmountSet(_amount);
     }
-
 
 }

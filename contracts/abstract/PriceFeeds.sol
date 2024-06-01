@@ -13,10 +13,10 @@ abstract contract PriceFeeds {
         LINK_USD_PRICE_FEED=_linkUsdPriceFeed;
     }
 
-    function getValueInUSD(uint256 amountInWei, uint8 _token) public view returns(uint256)
+    function getBetValue(uint256 amountInUSD, uint8 _token) public view returns(uint256)
     {
         AggregatorV3Interface _priceFeed = _token==0 ? ETH_USD_PRICE_FEED : LINK_USD_PRICE_FEED;
-        (, int price, , ,) = _priceFeed.latestRoundData();
-        return (amountInWei*uint256(price))/10**18;
+        (, int price, , ,) = _priceFeed.latestRoundData(); 
+        return (amountInUSD * 10 ** 20) / uint256(price);
     }
 }
