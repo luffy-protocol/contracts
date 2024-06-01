@@ -37,7 +37,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
     address public immutable USDC_TOKEN;
     address public immutable LINK_TOKEN;
 
-    constructor(address _vrfWrapper, address _ccipRouter, address _usdcToken, address _linkToken, AggregatorV3Interface[2] memory _priceFeeds) CCIPReceiver(_ccipRouter) PriceFeeds(_priceFeeds[0], _priceFeeds[1]) Randomness(_vrfWrapper) {
+    constructor(address _vrfWrapper, address _ccipRouter, address _usdcToken, address _linkToken, AggregatorV3Interface[2] memory _priceFeeds, uint32 _vrfCallbackGaslimit) CCIPReceiver(_ccipRouter) PriceFeeds(_priceFeeds[0], _priceFeeds[1]) Randomness(_vrfWrapper, _vrfCallbackGaslimit) {
         USDC_TOKEN=_usdcToken;
         LINK_TOKEN=_linkToken;
     }
@@ -122,14 +122,7 @@ abstract contract Predictions is PriceFeeds, Randomness, CCIPReceiver{
     }
 
 
-    function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal virtual override{
-        VrfTracker memory _game = vrfRequests[_requestId];
-        uint256 _randomWord=_randomWords[0];
-        gameToPrediction[_game.gameId][_game.player].captain = uint8(_randomWord % 11);
-        _randomWord = _randomWord / 100;
-        gameToPrediction[_game.gameId][_game.player].viceCaptain = uint8(_randomWord % 11);
-        emit BetPlaced(_game.gameId, _game.player, gameToPrediction[_game.gameId][_game.player]);
-    }
+
 
 
 

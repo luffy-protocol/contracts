@@ -16,6 +16,7 @@ contract LuffyCrosschain is Predictions{
     address public protocolAddress;
 
     mapping(address=>uint256) public valueBalance;
+    uint256 private cacheFunds;
 
     
     receive() external payable {
@@ -26,7 +27,7 @@ contract LuffyCrosschain is Predictions{
         cacheFunds+=msg.value;
     }
 
-    constructor(address _protocolAddress, address _vrfWrapper, address _ccipRouter, address _usdcToken, address _linkToken, AggregatorV3Interface[2] memory _priceFeeds) Predictions( _vrfWrapper,  _ccipRouter,  _usdcToken,  _linkToken, _priceFeeds) ConfirmedOwner(msg.sender) {
+    constructor(address _protocolAddress, address _vrfWrapper, address _ccipRouter, address _usdcToken, address _linkToken, AggregatorV3Interface[2] memory _priceFeeds) Predictions( _vrfWrapper,  _ccipRouter,  _usdcToken,  _linkToken, _priceFeeds, 800_000) ConfirmedOwner(msg.sender) {
         protocolAddress=_protocolAddress;
     }
 
@@ -42,7 +43,6 @@ contract LuffyCrosschain is Predictions{
         uint256 _remainingValue=_makeSquadAndPlaceBetRandom(_gameId, _squadHash, _amount, _token);
         valueBalance[msg.sender]=_remainingValue;
     }
-
     function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal override{
         VrfTracker memory _game = vrfRequests[_requestId];
         uint256 _randomWord=_randomWords[0];
@@ -52,13 +52,12 @@ contract LuffyCrosschain is Predictions{
 
         Prediction memory _prediction=gameToPrediction[_game.gameId][_game.player];
 
-        emit BetPlaced(_game.gameId, _game.player, gameToPrediction[_game.gameId][_game.player]);
+        emit BetPlaced(_game.gameId, _game.player, _prediction);
         
         bytes memory _data=abi.encode(_game.gameId, _game.player, block.timestamp, _prediction.squadHash, _prediction.token, _prediction.captain, _prediction.viceCaptain, true);
 
         _sendMessagePayNative(valueBalance[_game.player], _data);
     }
-
 
     function _sendMessagePayNative(uint256 _fee, bytes memory _data) internal returns (bytes32 messageId)
     {

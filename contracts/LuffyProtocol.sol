@@ -68,7 +68,7 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
         AggregatorV3Interface[2] priceFeeds;
     }
 
-    constructor(ConstructorParams memory _params) FunctionsClient(0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0) Predictions( _params.vrfWrapper,  _params.ccipRouter,  _params.usdcToken,  _params.linkToken, _params.priceFeeds) ConfirmedOwner(msg.sender) Automation(_params.upKeepIds) {
+    constructor(ConstructorParams memory _params) FunctionsClient(0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0) Predictions( _params.vrfWrapper,  _params.ccipRouter,  _params.usdcToken,  _params.linkToken, _params.priceFeeds, 400_000) ConfirmedOwner(msg.sender) Automation(_params.upKeepIds) {
         sourceCode=_params.sourceCode;
     }
 
@@ -112,6 +112,15 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
     function makeSquadAndPlaceBetRandom(uint256 _gameId, bytes32 _squadHash, uint256 _amount, uint8 _token) external payable{
         if(!gameIdsToRemappingsSet[_gameId]) revert SelectSquadDisabled(_gameId);
         _makeSquadAndPlaceBetRandom(_gameId, _squadHash, _amount, _token);
+    }
+
+    function fulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) internal virtual override{
+        VrfTracker memory _game = vrfRequests[_requestId];
+        uint256 _randomWord=_randomWords[0];
+        gameToPrediction[_game.gameId][_game.player].captain = uint8(_randomWord % 11);
+        _randomWord = _randomWord / 100;
+        gameToPrediction[_game.gameId][_game.player].viceCaptain = uint8(_randomWord % 11);
+        emit BetPlaced(_game.gameId, _game.player, gameToPrediction[_game.gameId][_game.player]);
     }
 
     function _ccipReceive(

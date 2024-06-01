@@ -14,6 +14,7 @@ contract LuffyCrosschainNoVRF is PredictionsNoVRF{
 
     uint64 public constant DESTINATION_CHAIN_SELECTOR=14767482510784806043; // AvalancheFuji Chain Selector
     address public protocolAddress;
+    uint256 private cacheFunds;
 
     mapping(address=>uint256) public valueBalance;
 

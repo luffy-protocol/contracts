@@ -10,11 +10,12 @@ abstract contract Randomness is VRFV2PlusWrapperConsumerBase, ConfirmedOwner{
 
     uint16 public requestConfirmations = 3;
     uint32 public numWords = 1;
-    uint32 public vrfCallbackGasLimit = 500_000;
+    uint32 public vrfCallbackGasLimit;
     IVRFV2PlusWrapper public immutable VRF_WRAPPER;
 
-    constructor(address _vrfWrapper) VRFV2PlusWrapperConsumerBase(_vrfWrapper){
+    constructor(address _vrfWrapper, uint32 _vrfCallbackGasLimit) VRFV2PlusWrapperConsumerBase(_vrfWrapper){
         VRF_WRAPPER = IVRFV2PlusWrapper(_vrfWrapper);  
+        vrfCallbackGasLimit=_vrfCallbackGasLimit;
     }
 
     function request() payable external returns(uint256, uint256){
