@@ -15,6 +15,23 @@ if (SECOND_PRIVATE_KEY) {
 }
 
 const networks = {
+  avalancheFuji: {
+    url: "https://api.avax-test.network/ext/bc/C/rpc",
+    gasPrice: undefined,
+    nonce: undefined,
+    accounts,
+    verifyApiKey: process.env.FUJI_SNOWTRACE_API_KEY || "UNSET",
+    chainId: 43113,
+    confirmations: DEFAULT_VERIFICATION_BLOCK_CONFIRMATIONS,
+    nativeCurrencySymbol: "AVAX",
+    vrfWrapper: "0x327B83F409E1D5f13985c6d0584420FA648f1F56",
+    ccipRouter: "0xF694E193200268f9a4868e4Aa017A0118C9a8177",
+    usdcToken: "0x5425890298aed601595a70AB815c96711a31Bc65",
+    linkToken: "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846",
+    ethToUsdPriceFeed: "0x5498BB86BC934c8D34FDA08E81D444153d0D06aD",
+    linkToUsdPriceFeed: "0x34C4c526902d88a3Aa98DB8a9b802603EB1E3470",
+    protocolAddress: "0x51b5703fF5e22A2AFdC5408163212dcF8aef3303",
+  },
   ethereumSepolia: {
     url:
       "https://eth-sepolia.g.alchemy.com/v2/" +
@@ -32,7 +49,7 @@ const networks = {
     linkToken: "0x779877A7B0D9E8603169DdbD7836e478b4624789",
     ethToUsdPriceFeed: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
     linkToUsdPriceFeed: "0xc59E3633BAAC79493d908e63626716e204A45EdF",
-    crosschainAddress: "0x874F9914c3e5cA477cD858496a7078FAAAF92a8d",
+    crosschainAddress: "0x89d5da61548205E755874d7f67Ad00F90680440d",
   },
   arbitrumSepolia: {
     url:
@@ -51,7 +68,7 @@ const networks = {
     linkToken: "0xb1D4538B4571d411F07960EF2838Ce337FE1E80E",
     ethToUsdPriceFeed: "0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165",
     linkToUsdPriceFeed: "0x0FB99723Aee6f420beAD13e6bBB79b7E6F034298",
-    crosschainAddress: "0x45E50677f8DECa7CC582Ad573b525409d1233592",
+    crosschainAddress: "0x826dF7f9fEe3760321371d46a5a744bB2fcA4aef",
   },
   baseSepolia: {
     url:
@@ -70,25 +87,9 @@ const networks = {
     linkToken: "0xE4aB69C077896252FAFBD49EFD26B5D171A32410",
     ethToUsdPriceFeed: "0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1",
     linkToUsdPriceFeed: "0xb113F5A928BCfF189C998ab20d753a47F9dE5A61",
-    crosschainAddress: "0x34EC9c9291dB51Cc763AbF2DF45d0a67CBa7244f",
+    crosschainAddress: "0x5c248293e02A2FE29B0a8d72d3AB4124CFac56e7",
   },
-  avalancheFuji: {
-    url: "https://api.avax-test.network/ext/bc/C/rpc",
-    gasPrice: undefined,
-    nonce: undefined,
-    accounts,
-    verifyApiKey: process.env.FUJI_SNOWTRACE_API_KEY || "UNSET",
-    chainId: 43113,
-    confirmations: DEFAULT_VERIFICATION_BLOCK_CONFIRMATIONS,
-    nativeCurrencySymbol: "AVAX",
-    vrfWrapper: "0x327B83F409E1D5f13985c6d0584420FA648f1F56",
-    ccipRouter: "0xF694E193200268f9a4868e4Aa017A0118C9a8177",
-    usdcToken: "0x5425890298aed601595a70AB815c96711a31Bc65",
-    linkToken: "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846",
-    ethToUsdPriceFeed: "0x5498BB86BC934c8D34FDA08E81D444153d0D06aD",
-    linkToUsdPriceFeed: "0x34C4c526902d88a3Aa98DB8a9b802603EB1E3470",
-    protocolAddress: "0x6BD5184C69078CF4DC576c78c2B2Bb2E55d53eb0",
-  },
+
   optimismSepolia: {
     url:
       "https://opt-sepolia.g.alchemy.com/v2/" +
@@ -106,7 +107,7 @@ const networks = {
     linkToken: "0xE4aB69C077896252FAFBD49EFD26B5D171A32410",
     ethToUsdPriceFeed: "0x61Ec26aA57019C486B10502285c5A3D4A4750AD7",
     linkToUsdPriceFeed: "0x53f91dA33120F44893CB896b12a83551DEDb31c6",
-    crosschainAddress: "0x649d81f1A8F4097eccA7ae1076287616E433c5E8",
+    crosschainAddress: "0x9b7a42bFE8f8Df9d43f368Baf9480fB7193Cf06a",
   },
 };
 
