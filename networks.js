@@ -30,7 +30,7 @@ const networks = {
     linkToken: "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846",
     ethToUsdPriceFeed: "0x5498BB86BC934c8D34FDA08E81D444153d0D06aD",
     linkToUsdPriceFeed: "0x34C4c526902d88a3Aa98DB8a9b802603EB1E3470",
-    protocolAddress: "0x51b5703fF5e22A2AFdC5408163212dcF8aef3303",
+    protocolAddress: "0x2f80513FD5119CD9DC340cd0666Ee84d00A3e799",
   },
   ethereumSepolia: {
     url:
@@ -49,7 +49,7 @@ const networks = {
     linkToken: "0x779877A7B0D9E8603169DdbD7836e478b4624789",
     ethToUsdPriceFeed: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
     linkToUsdPriceFeed: "0xc59E3633BAAC79493d908e63626716e204A45EdF",
-    crosschainAddress: "0x89d5da61548205E755874d7f67Ad00F90680440d",
+    crosschainAddress: "0x05aAFbce41C5ad85Be9a7017cB545E631D7aCB38",
   },
   arbitrumSepolia: {
     url:
@@ -68,7 +68,7 @@ const networks = {
     linkToken: "0xb1D4538B4571d411F07960EF2838Ce337FE1E80E",
     ethToUsdPriceFeed: "0xd30e2101a97dcbAeBCBC04F14C3f624E67A35165",
     linkToUsdPriceFeed: "0x0FB99723Aee6f420beAD13e6bBB79b7E6F034298",
-    crosschainAddress: "0x826dF7f9fEe3760321371d46a5a744bB2fcA4aef",
+    crosschainAddress: "0x146f80579cA969799523F333c77453143e99e67D",
   },
   baseSepolia: {
     url:
@@ -87,7 +87,7 @@ const networks = {
     linkToken: "0xE4aB69C077896252FAFBD49EFD26B5D171A32410",
     ethToUsdPriceFeed: "0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1",
     linkToUsdPriceFeed: "0xb113F5A928BCfF189C998ab20d753a47F9dE5A61",
-    crosschainAddress: "0x5c248293e02A2FE29B0a8d72d3AB4124CFac56e7",
+    crosschainAddress: "0x1c89e2970889cA2eA64078c9A87eBEd03D68a541",
   },
 
   optimismSepolia: {
@@ -107,7 +107,7 @@ const networks = {
     linkToken: "0xE4aB69C077896252FAFBD49EFD26B5D171A32410",
     ethToUsdPriceFeed: "0x61Ec26aA57019C486B10502285c5A3D4A4750AD7",
     linkToUsdPriceFeed: "0x53f91dA33120F44893CB896b12a83551DEDb31c6",
-    crosschainAddress: "0x9b7a42bFE8f8Df9d43f368Baf9480fB7193Cf06a",
+    crosschainAddress: "0x17517F552d14E3ae1b2a8005f594D7916CE6466d",
   },
 };
 
