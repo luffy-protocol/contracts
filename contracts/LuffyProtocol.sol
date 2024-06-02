@@ -64,11 +64,10 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
         address ccipRouter;
         address usdcToken;
         address linkToken;
-        uint256[2] upKeepIds;
         AggregatorV3Interface[2] priceFeeds;
     }
 
-    constructor(ConstructorParams memory _params) FunctionsClient(0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0) Predictions( _params.vrfWrapper,  _params.ccipRouter,  _params.usdcToken,  _params.linkToken, _params.priceFeeds, 400_000) ConfirmedOwner(msg.sender) Automation(_params.upKeepIds) {
+    constructor(ConstructorParams memory _params) FunctionsClient(0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0) Predictions( _params.vrfWrapper,  _params.ccipRouter,  _params.usdcToken,  _params.linkToken, _params.priceFeeds, 400_000) ConfirmedOwner(msg.sender)  {
         sourceCode=_params.sourceCode;
     }
 
@@ -159,14 +158,7 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
     }
 
     function _triggerFetchResults(uint256 gameweek, uint8 donHostedSecretsSlotID, uint64 donHostedSecretsVersion, bytes[] memory bytesArgs) internal onlyOwnerOrAutomation(0) {
-        // for(uint256 i=0; i<games[gameweek].gameIds.length; i++){
-        //     string[] memory args=new string[](2);
-        //     args[0]=games[gameweek].gameIds[i].toString();
-        //     args[1]=games[gameweek].remappings[i];
-        //     _triggerCompute(sourceCode, "", donHostedSecretsSlotID, donHostedSecretsVersion, args, bytesArgs, SUBSCRIPTION_ID, oracleCallbackGasLimit, DON_ID);
-        //     emit OracleRequestSent(latestRequestId, games[gameweek].gameIds[i]);
-        //     requestToGameId[latestRequestId]=games[gameweek].gameIds[i];
-        // }
+
     }
 
 
@@ -236,14 +228,17 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
     function claimPoints(uint256 _gameId, bytes32[11] memory _playerIds, uint256 _totalPoints, bytes memory _proof) external {
         if(block.timestamp > results[_gameId].publishedTimestamp + 2 days) revert ClaimWindowComplete(block.timestamp, results[_gameId].publishedTimestamp + 2 days);
         bytes32[] memory _publicInputs=new bytes32[](47);
+        
         Prediction memory _prediction=gameToPrediction[_gameId][msg.sender];
         bytes32 _squadHash=_prediction.squadHash;
-        // captain, vice captain, isRandom, playerIds, squadHash, claimed player points
+        
         _publicInputs[0]=bytes32(uint256(_prediction.captain));
         _publicInputs[1]=bytes32(uint256(_prediction.viceCaptain));
         _publicInputs[2]=bytes32(_prediction.isRandom?uint256(1):uint256(0));
+        
         for(uint i=0; i<11;i++) _publicInputs[3+i]=_playerIds[i];
         for(uint i=0; i<32;i++) _publicInputs[14+i]=bytes32(uint256(uint8(_squadHash[i])));
+        
         _publicInputs[46]=bytes32(_totalPoints);
         _verifyProof(_proof, _publicInputs);
         emit PointsClaimed(_gameId, msg.sender, _playerIds, _totalPoints);
@@ -274,44 +269,6 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
     function claimAndWithdrawRewards(uint256 _gameId, address _player, uint256 _amountInWei, uint256 _position) external onlyOwner{
         claimRewards(_gameId, _player, _amountInWei, _position);
         _withdrawRewards();
-    }
-
-    // Testing Helpers for subgraph
-
-    // 1. Set playerId remappings
-    // 2. Make predictions and place bets
-    // 3. Match results posted on chain
-    // 4. Claim points on chain
-    // 5. Claim rewards on chain
-    // 6. Withdraw rewards on chain
-
-    function setDonHostedSecrets(uint8 _donHostedSecretsSlotID, uint64 _donHostedSecretsVersion) external onlyOwner{
-        prevDonHostedSecretsSlotID=_donHostedSecretsSlotID;
-        prevDonHostedSecretsVersion=_donHostedSecretsVersion;
-    }
-
-    function zmakeSquadTest(uint256 _gameId, address _player, Prediction memory _prediction) external {
-        emit BetPlaced(_gameId, _player, _prediction);
-    }
-
-    function zpostResultsTest(bytes32 _requestId, uint256 _gameId, bytes32 _merkleRoot, string memory _pointsIpfsHash) external{
-        emit OracleResultsPublished(_requestId, _gameId, _merkleRoot, _pointsIpfsHash);
-    }
-
-    function zclaimPointsTest(uint256 _gameId, address _claimer,bytes32[11] memory _playerIds, uint256 _totalPoints) external{
-        emit PointsClaimed(_gameId, _claimer, _playerIds, _totalPoints);
-    }
-
-    function zclaimRewardsTest(uint256 _gameId, address _claimer, uint256 _amount, uint256 _position) external{
-        emit RewardsClaimed(_gameId, _claimer, _amount, _position);
-    }
-
-    function zwithdrawRewardsTest(address _claimer, uint256 _amount) external{
-        emit RewardsWithdrawn(_claimer, _amount);
-    }
-
-    function zsetPlayerIdRemmapings(uint256 gameweek, uint256[] memory gameIds, string[] memory remappings, uint256 resultsTriggersIn) external  {
-        emit GamePlayerIdRemappingSet(gameweek, gameIds, remappings, resultsTriggersIn);
     }
 
     function clearCacheFunds() external onlyOwner{

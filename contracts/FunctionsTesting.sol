@@ -7,11 +7,6 @@ import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/l
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 
-/**
- * THIS IS AN EXAMPLE CONTRACT THAT USES HARDCODED VALUES FOR CLARITY.
- * THIS IS AN EXAMPLE CONTRACT THAT USES UN-AUDITED CODE.
- * DO NOT USE THIS CODE IN PRODUCTION.
- */
 contract FunctionsTesting is FunctionsClient, ConfirmedOwner {
     using FunctionsRequest for FunctionsRequest.Request;
     using Strings for uint256;

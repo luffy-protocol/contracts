@@ -9,12 +9,14 @@ import "../interface/ILogAutomation.sol";
 
 abstract contract Automation is AutomationCompatibleInterface, ILogAutomation, ConfirmedOwner{
     
-    IKeeperRegistryMaster public automationRegistry=IKeeperRegistryMaster(0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984);
-    
     uint256[2] public upKeepIds; // 0 - Custom Logic Trigger, 1 - Log Trigger
+    address[2] public forwarderAddresses;  // 0 - Custom Logic Trigger, 1 - Log Trigger
 
-    constructor(uint256[2] memory _upKeepIds){
-        upKeepIds=_upKeepIds;
+    constructor(){
+        upKeepIds[0]=58387336616451823836734822744286210528343491445611152550443089243189960990986;
+        upKeepIds[1]=42777266604767705378881328016196847279435767347742105064170763126637428887845;
+        forwarderAddresses[0]=0xeBA520bB98331Afc436bc03Fd6536AeD38FC8Cde;
+        forwarderAddresses[1]=0x734Dfb1809580f41F7f6cB11414df4f2d95f5d93;
     }
 
     function setTimeTriggerAutomation(uint256 _upKeepId) external onlyOwner{
@@ -25,8 +27,12 @@ abstract contract Automation is AutomationCompatibleInterface, ILogAutomation, C
         upKeepIds[1]=_upKeepId;
     }
 
+    function setForwarderAddress(uint8 _automation, address _forwarder) external onlyOwner{
+        forwarderAddresses[_automation]=_forwarder;
+    }
+
     function getForwarderAddress(uint8 _automation) public view returns(address){
-        return automationRegistry.getForwarder(upKeepIds[_automation]);
+        return forwarderAddresses[_automation];
     }   
               
     function checkLog(

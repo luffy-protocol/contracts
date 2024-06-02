@@ -18,7 +18,7 @@ task(
   "make-request",
   "Makes a request to the Oracle function in the contract"
 ).setAction(async (taskArgs) => {
-  const luffyProtocolAddress = "0x4a0DC91781A116e83770A17AD09b63fa3E50d7Ce"; // REPLACE this with your Functions consumer address
+  const luffyProtocolAddress = "0x886b99Ee4B4130884f5c04AB6A934978F43bc364"; // REPLACE this with your Functions consumer address
   const subscriptionId = 8378; // REPLACE this with your subscription ID
   const donId = "fun-avalanche-fuji-1";
   const routerAddress = "0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0";
@@ -33,6 +33,8 @@ task(
   const slotIdNumber = 0; // slot ID where to upload the secrets
   const expirationTimeMinutes = 150; // expiration time in minutes of the secrets
   const explorerUrl = "https://testnet.snowtrace.io";
+
+  const index = 0;
 
   const gasLimit = 300000;
 
@@ -124,12 +126,30 @@ task(
     signer
   );
 
-  const args = [
-    "1150949",
-    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmWbTKbiUoSmW4dKJLYoAT4a8AmRWFcrNYisGTET4o98AQ?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+  const gameIds = [
+    1150949, 1150950, 1150951, 1150952, 1150953, 1150954, 1150955, 1150956,
+    1150957, 1150958, 1150959, 1150960, 1150961, 1150962,
   ];
+  const remappings = [
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmWbTKbiUoSmW4dKJLYoAT4a8AmRWFcrNYisGTET4o98AQ?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmbeyCbx8av2wpKSFnFEdxAq911dk555qVPoWnTjZgKiDM?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmQfGVq7sTwFw1zQRvTXqnRjcGS9h27m94tiVaKrpU9PGd?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmVAFmcVcW6fTWu8opUkKhJ1qB6aitiJWPFRyHk15YtYUK?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmRQzjW7mgf8EgsHNq6m247NbVBLHUWeGPoyeGtV6mzWLG?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmZhNmSuUqjdg6ZULg5wLUSGmexfMjaGwVi6fBesa7ocBm?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmV5CMmNR7uHmqA3UB5NFGGJBgebFP62CKBmuMMNw9SF3w?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmYnXQtWxDZczFbx4TR4BNxiXw6xfoJiZn3epdAT6dcPGg?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmVgp6j4Y3aq52WRaCtXBd3fzf3RvS3rxpmCqwwKFZyYov?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmQPEtwU8tJ1EQgb64ySTKfeNWFeEXQktdTWMmAfk63hEL?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmSvmFPBu7U3iSLaRqmH3J52KzqawYu9LN6QAnkkb6CLsa?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/Qmd71ZywRQifqoSW8sier6Cwt75fGFPfDbv5uPTTRJ7h4K?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmcEdJvdK2E38F82ufQBLHaHz7rBktLUpRe2UwAejW1ueh?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+    "https://orange-select-opossum-767.mypinata.cloud/ipfs/QmXJ3ekfJZNivhTqub3Qgwsfa74aqw1AG8kueQhf1XxNfu?pinataGatewayToken=71dx6yOphMuWQ_g-AnsHvIyaj168b316CK-yK31hd-3eHPdWpnWl01CbCiFJukXb",
+  ];
+
+  const args = [gameIds[index], remappings[index]];
   // Actual transaction call
-  const transaction = await LuffyProtocol.triggerRequest(
+  const transaction = await LuffyProtocol.triggerFetchResult(
     args[0],
     args[1],
     slotIdNumber,
