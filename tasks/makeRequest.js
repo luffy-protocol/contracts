@@ -18,7 +18,7 @@ task(
   "make-request",
   "Makes a request to the Oracle function in the contract"
 ).setAction(async (taskArgs) => {
-  const luffyProtocolAddress = "0x886b99Ee4B4130884f5c04AB6A934978F43bc364"; // REPLACE this with your Functions consumer address
+  const luffyProtocolAddress = "0xf97d85DF6c4D2b032645EE2C2D24423Ed66793f4"; // REPLACE this with your Functions consumer address
   const subscriptionId = 8378; // REPLACE this with your subscription ID
   const donId = "fun-avalanche-fuji-1";
   const routerAddress = "0xA9d587a00A31A52Ed70D6026794a8FC5E2F5dCb0";
@@ -34,7 +34,7 @@ task(
   const expirationTimeMinutes = 150; // expiration time in minutes of the secrets
   const explorerUrl = "https://testnet.snowtrace.io";
 
-  const index = 0;
+  const index = 12;
 
   const gasLimit = 300000;
 
@@ -185,7 +185,6 @@ task(
         });
     });
     const fulfillmentCode = response.fulfillmentCode;
-
     if (fulfillmentCode === FulfillmentCode.FULFILLED) {
       console.log(
         `\n✅ Request ${
@@ -230,6 +229,13 @@ task(
           decodedResponse
         );
       }
+      // console.log(
+      //   `\n\n✅ Encoded perform upkeep bytes: `,
+      //   abiCoder.encode(
+      //     ["bytes32", "bytes", "bool"],
+      //     [response.requestId, decodedResponse, true]
+      //   )
+      // );
     }
   } catch (error) {
     console.error("Error listening for response:", error);

@@ -226,7 +226,7 @@ contract LuffyProtocol is FunctionsClient, ZeroKnowledge, Predictions, Automatio
     }
 
     function claimPoints(uint256 _gameId, bytes32[11] memory _playerIds, uint256 _totalPoints, bytes memory _proof) external {
-        if(block.timestamp > results[_gameId].publishedTimestamp + 2 days) revert ClaimWindowComplete(block.timestamp, results[_gameId].publishedTimestamp + 2 days);
+        // if(block.timestamp > results[_gameId].publishedTimestamp + 2 days) revert ClaimWindowComplete(block.timestamp, results[_gameId].publishedTimestamp + 2 days);
         bytes32[] memory _publicInputs=new bytes32[](47);
         
         Prediction memory _prediction=gameToPrediction[_gameId][msg.sender];
